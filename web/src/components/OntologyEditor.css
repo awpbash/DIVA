@@ -1,0 +1,123 @@
+/* Ontology tab: full-page schema manager (category rail + field table). */
+.ov { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+.ov__bar {
+  display: flex; align-items: center; gap: 14px; padding: 12px 18px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.ov__bar h2 { margin: 0; font-size: 16px; }
+.ov__sub { font-size: 11.5px; color: var(--text-subtle); }
+.ov__search {
+  margin-left: auto; width: min(280px, 30vw);
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 11px; color: var(--text); font-size: 13px;
+}
+.ov__search:focus { outline: none; border-color: var(--accent); }
+.ov__add {
+  background: var(--accent-strong); color: #fff; border: none; border-radius: 8px;
+  padding: 8px 14px; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+}
+.ov__error { padding: 8px 18px; color: var(--error, #f87171); font-size: 12.5px; }
+
+.ov__body { display: flex; flex: 1; min-height: 0; }
+
+/* Category rail. Wide enough that the two "Customer ..." categories stay
+   distinguishable next to the sensitivity dropdown. */
+.ov__rail {
+  width: 290px; flex-shrink: 0; overflow-y: auto; padding: 12px 10px;
+  border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px;
+}
+.ov__cat {
+  display: flex; align-items: center; gap: 6px; border-radius: 8px; padding: 2px 4px;
+}
+.ov__cat.is-active { background: var(--accent-soft); }
+.ov__cat > span, .ov__cat-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 1;
+  background: transparent; border: none; color: var(--text); cursor: pointer;
+  font-size: 12.5px; padding: 7px 8px; text-align: left; border-radius: 6px; min-width: 0;
+}
+button.ov__cat { cursor: pointer; border: none; background: transparent; color: var(--text); font-size: 12.5px; padding: 9px 12px; justify-content: space-between; }
+button.ov__cat:hover, .ov__cat-btn:hover { background: var(--bg-card); }
+.ov__cat em, .ov__cat-btn em {
+  font-style: normal; font-size: 10.5px; color: var(--text-subtle);
+  background: var(--bg-card); border-radius: 9px; padding: 1px 7px; flex-shrink: 0;
+}
+.ov__cat-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov__level {
+  flex-shrink: 0; max-width: 96px; font-size: 10px;
+  background: var(--bg-app); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-muted); padding: 3px 4px; cursor: pointer;
+}
+.ov__level.is-conf { color: #f5c842; border-color: rgba(245, 200, 66, 0.35); }
+.ov__level-pill {
+  font-size: 10px; padding: 2px 7px; border-radius: 5px; white-space: nowrap;
+  background: var(--bg-app); border: 1px solid var(--border); color: var(--text-subtle);
+}
+.ov__level-pill.is-conf { color: #f5c842; border-color: rgba(245, 200, 66, 0.35); }
+
+/* Field table */
+.ov__main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 12px 16px; }
+.ov__scroll { flex: 1; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); }
+.ov__table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ov__table th {
+  position: sticky; top: 0; z-index: 1; background: var(--bg-card);
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-subtle); padding: 10px 12px; border-bottom: 1px solid var(--border-strong);
+  white-space: nowrap;
+}
+.ov__th-desc { min-width: 220px; }
+.ov__table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.ov__row:hover td { background: var(--bg-app); }
+
+.ov__field { min-width: 180px; }
+.ov__field-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+.ov__yours { font-size: 9.5px; color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 1px 6px; font-weight: 600; }
+.ov__field-key { display: block; font-size: 10.5px; color: var(--text-subtle); font-family: var(--mono, monospace); margin-top: 2px; }
+.ov__enum { display: block; font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.ov__cat-cell { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
+.ov__type {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+  padding: 2px 7px; border-radius: 5px; background: var(--bg-app);
+  color: var(--text-subtle); border: 1px solid var(--border);
+}
+.ov__type--enum { color: #a78bfa; border-color: rgba(167, 139, 250, 0.3); }
+.ov__type--value { color: #4dd4ac; border-color: rgba(77, 212, 172, 0.3); }
+.ov__type--free_text { color: #60a5fa; border-color: rgba(96, 165, 250, 0.3); }
+.ov__hint { color: var(--text-muted); font-size: 12px; line-height: 1.45; max-width: 460px; }
+.ov__none { color: var(--text-subtle); font-style: normal; }
+.ov__who { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
+.ov__actions { white-space: nowrap; text-align: right; }
+.ov__actions button {
+  background: transparent; border: none; color: var(--text-muted); cursor: pointer;
+  padding: 3px 7px; border-radius: 6px; font-size: 13px;
+}
+.ov__actions button:hover { background: var(--bg-app); color: var(--text); }
+.ov__empty { text-align: center; color: var(--text-subtle); padding: 28px; }
+
+/* Add / edit form (top bar in add mode, inline row in edit mode) */
+.ov__row-edit td { background: var(--bg-app); }
+.ov__form {
+  border: 1px solid var(--border-strong); border-radius: 10px;
+  padding: 14px; margin-bottom: 12px; background: var(--bg-card);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ov__row-edit .ov__form { margin: 0; border: none; background: transparent; padding: 4px 0; }
+.ov__form-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.ov__form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-muted); flex: 1; min-width: 130px; }
+.ov__form-wide { width: 100%; }
+.ov__form input, .ov__form select, .ov__form textarea {
+  background: var(--bg-app); border: 1px solid var(--border); border-radius: 7px;
+  padding: 7px 9px; color: var(--text); font-size: 13px; font-family: inherit; resize: vertical;
+}
+.ov__form input:focus, .ov__form select:focus, .ov__form textarea:focus { outline: none; border-color: var(--accent); }
+.ov__form-help { font-size: 11.5px; color: var(--text-subtle); margin-top: -4px; }
+.ov__form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.ov__form-cancel {
+  background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+  border-radius: 7px; padding: 6px 14px; font-size: 12px; cursor: pointer;
+}
+.ov__form-save {
+  background: var(--accent-strong); color: #fff; border: none;
+  border-radius: 7px; padding: 6px 16px; font-weight: 600; font-size: 12px; cursor: pointer;
+}
+.ov__form-save:disabled { opacity: 0.5; cursor: default; }
