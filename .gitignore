@@ -1,0 +1,62 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Stores / runtime artifacts
+storage/
+!storage/.gitkeep
+
+# Eval runs and generated reports
+eval/results/
+!eval/results/.gitkeep
+eval/qa/
+docs/ontology_graph.md
+
+# Node / web
+web/node_modules/
+web/dist/
+web/.vite/
+web/tsconfig.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scratch / debug artefacts
+decoded.txt
+temp*.json
+scripts/.deck_cache/
+
+# Neo4j image-bake artifacts (the /data snapshot copied into the image at build)
+.bake/
+docker/neo4j/snapshot/
+
+# Office lock files
+~$*
+
+# Scorer dumps — regenerated from the live graph via: python -m eval.extraction.score --dump
+eval/extraction/dumps/
+
+# Run logs / scratch — never version logs or temp files
+*.log
+*.tmp
+
+# Playwright / browser-automation artifacts
+.playwright/
+playwright-report/
+.playwright-mcp/
+test-results/
+
+# zip files
+*.zip

@@ -1,0 +1,66 @@
+# --- Core ---
+python-dotenv>=1.0
+pydantic>=2.7
+
+# --- PDF + page image ---
+# pypdfium2 wraps Google's PDFium (Apache-2.0 / BSD-3). Chosen over PyMuPDF,
+# which is AGPL and cannot ship inside an MIT-licensed project.
+pypdfium2>=4.30              # PDF → PNG rendering
+pillow>=10.0                 # bitmap encode, plus page-image dimensions read
+                             # by the extraction stages
+
+# --- LLM + config ---
+openai>=1.40                 # OpenAI direct (gpt-5.4 / gpt-5.4-mini, embeddings)
+tenacity>=8.2                # retry/backoff on LLM calls
+jsonschema>=4.22             # validates configs/schemas/*.json meta-schemas
+jinja2>=3.1                  # prompt template rendering (configs/prompts/*.md)
+pyyaml>=6.0                  # declarative config tree (configs/, packs, ontology)
+
+# --- OCR ---
+# RapidOCR (ONNX-based, PaddleOCR-derived models). Pure pip install — no
+# system binary needed. Models are baked into the api image at build time
+# (see Dockerfile); on bare metal they auto-download (~30MB) on first run.
+# Used by pipeline/extraction/rapidocr_ocr.py.
+rapidocr>=3.0
+# rapidocr does NOT depend on an inference engine — it expects you to pick
+# one and raises "onnxruntime is not installed" at engine construction
+# otherwise. The Windows venv had it by hand; the container must get it here.
+onnxruntime>=1.26
+
+# --- Knowledge store (Cosmos DB NoSQL: records + vectors) ---
+azure-cosmos>=4.9
+# The async Cosmos client (pipeline/store/aio.py) needs an async HTTP
+# transport; the SDK imports aiohttp lazily and crashes without it.
+aiohttp>=3.9
+# Exact in-RAM vector ranking for dev/client mode (store/query.py); also a
+# transitive dep of onnxruntime, pinned here because we import it directly.
+numpy>=1.26
+# File-store seam: local folder in dev, Azure Blob in production.
+azure-storage-blob>=12.20
+# Managed-identity auth for the Blob mirror. Needed whenever
+# AZURE_BLOB_ACCOUNT_URL is set without a connection string, which is a
+# documented setting, so this is a runtime dependency and not an extra.
+azure-identity>=1.17
+
+# --- Spreadsheet export ---
+# The Knowledge tab's "export to Excel" route builds the workbook directly
+# (api/routes/km.py). Nothing reads spreadsheets any more, so there is no
+# pandas and no legacy .xls engine.
+openpyxl>=3.1
+
+# --- API ---
+fastapi>=0.111
+uvicorn[standard]>=0.30
+sse-starlette>=2.1           # SSE streaming for POST /chat
+python-multipart>=0.0.9      # multipart parsing for POST /admin/upload (PDF upload)
+
+# --- HTTP client ---
+# Runtime, not just tests: the Content Understanding reader posts documents with
+# it (pipeline/extraction/cu_read.py) and the ops scripts talk to a running
+# instance with it (scripts/ask.py, eval/run.py). It cannot be left to come in
+# transitively — recent openai releases vendor their own renamed copy, so a
+# clean install has no importable `httpx` and those three break at run time.
+httpx>=0.27
+
+# --- Tests ---
+pytest>=8.0

@@ -1,0 +1,46 @@
+# Universal analyzer — categories + roles every doctype gets for free.
+#
+# v2 model: this analyzer no longer enumerates fields. It declares which fact
+# CATEGORIES the categorise pass (4c) is allowed to assign, plus an optional
+# role taxonomy per category. A domain's own analyzer extends
+# this by adding their own roles on top of the same categories.
+
+id: _universal
+version: 2.0
+
+# No classify_when: this analyzer is the fallback when no doctype matches.
+
+# Every doctype gets all ten universal categories. Specific analyzers can
+# narrow this if a category never applies — but defaulting to the full set
+# keeps recall up.
+categories:
+  - organization
+  - person
+  - place
+  - equipment
+  - money            # specific amount with currency (S$ 300,000)
+  - rate             # per-unit rate (S$ 3.20 per RT-hr, 8% per annum)
+  - formula          # symbolic calculation (NBV + 25% admin fee, SIBOR + 3%)
+  - cost_category    # named cost concept without amount (Additional Costs)
+  - date
+  - measurement
+  - obligation
+  - right            # entitlement / permission / remedy held by a party
+  - condition        # condition precedent, exception, limitation, carve-out
+  - event            # default, termination, force majeure, supply restriction
+  - defined_term     # contract-defined term + its definition
+  - reference
+  - schedule
+
+# Universal does not assign typed roles (no opinion on what role any given
+# entity plays). Doctype analyzers add their roles by extends: _universal.
+roles: {}
+
+confidence_thresholds:
+  verified: 0.80
+  tentative: 0.60
+
+notes: |
+  Anything added here applies to EVERY doctype. Keep the category list
+  conservative — each enabled category becomes one mention type the
+  categorise pass has to choose between, which adds noise on the margins.

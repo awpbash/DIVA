@@ -1,0 +1,64 @@
+# Keep the build context lean and keep private material out of the image.
+# Anything not COPY'd by the Dockerfile is still uploaded to the daemon as
+# build context unless it is listed here, so this file is a size lever AND a
+# leak guard. Verify with:  docker build --no-cache --progress=plain .
+
+# --- never in an image ------------------------------------------------------
+.env
+.git/
+.venv/
+.claude/
+
+# --- large working directories ----------------------------------------------
+# storage/ is the runtime volume (bind-mounted by compose), not image content.
+storage/
+railway_storage/
+data/
+web/node_modules/
+web/dist/
+
+# --- development and authoring material -------------------------------------
+docs/
+tests/
+paper/
+deck/
+figures/
+*.zip
+*.xls
+*.xlsx
+CLAUDE.md
+OPEN_SOURCE_PLAN.md
+PRODUCT_PLAN.md
+evals.json
+schema.json
+docker-compose.yml
+docker-compose.prod.yml
+
+# --- caches -----------------------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+**/__pycache__/
+*.pyc
+*.log
+
+# --- eval/ ------------------------------------------------------------------
+# The image needs ONLY eval/__init__.py and eval/extraction/: the admin extract
+# chain imports eval.extraction.record. Everything else is harness tooling and
+# committed evaluation assets, none of which run in production.
+eval/results/
+eval/genqa/
+eval/gold/
+eval/qa/
+eval/r0/
+eval/reconcile/
+eval/extraction/dumps/
+eval/run.py
+eval/run_r0.py
+eval/genqa_run.py
+eval/harvest_labels.py
+eval/report.py
+
+# --- test and QA artifacts --------------------------------------------------
+_qa_shots/
+upload-intake-panel.png

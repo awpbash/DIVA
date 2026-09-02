@@ -1,0 +1,3 @@
+﻿
+# tsc artifacts (src is TypeScript-only)
+src/**/*.js

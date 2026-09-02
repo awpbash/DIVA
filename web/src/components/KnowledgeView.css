@@ -1,0 +1,123 @@
+/* Knowledge Base view — the aligned KM layer. */
+.kb { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+.kb__bar {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.kb__fam {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); padding: 7px 10px; font-size: 13px; max-width: 420px;
+}
+.kb__roles { display: inline-flex; gap: 2px; padding: 2px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+.kb__roles button { background: transparent; border: none; color: var(--text-muted); font-size: 11px; padding: 3px 9px; border-radius: 6px; cursor: pointer; text-transform: capitalize; }
+.kb__roles button.is-active { background: var(--accent-strong); color: #fff; }
+.kb__filter {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); padding: 7px 10px; font-size: 12.5px; width: 190px;
+}
+.kb__filter::placeholder { color: var(--text-subtle); }
+.kb__counts { font-size: 12px; color: var(--text-subtle); margin-left: auto; }
+.kb__counts b { color: var(--ok, #4dd4ac); }
+
+.kb__empty { padding: 48px; text-align: center; color: var(--text-subtle); }
+.kb__body { overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.kb__hint { font-size: 11px; color: var(--text-subtle); font-weight: 400; }
+.kb__na { font-size: 12px; color: var(--text-subtle); }
+
+/* Parties */
+.kb__parties h3, .kb__chain h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; }
+.kb__party-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.kb__party {
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 14px;
+  background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 10px;
+}
+.kb__party-role { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); }
+.kb__party-name { font-size: 13.5px; font-weight: 600; }
+
+/* Document chain / DAG */
+.kb__docs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.kb__doc {
+  display: flex; flex-direction: column; padding: 6px 12px; font-size: 12px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+}
+.kb__doc.is-cited { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.kb__doc em { font-style: normal; font-size: 10.5px; color: var(--text-subtle); }
+.kb__edges { display: flex; flex-direction: column; gap: 4px; }
+.kb__edge { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+.kb__edge b { color: var(--text); font-weight: 500; }
+.kb__rel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; padding: 1px 7px; border-radius: 5px; background: var(--bg-app); border: 1px solid var(--border); }
+.kb__rel--AMENDS { color: #f59e0b; border-color: rgba(245,158,11,0.3); }
+.kb__rel--SUPERSEDES { color: #f87171; border-color: rgba(248,113,113,0.3); }
+.kb__rel--NOVATES { color: #a78bfa; border-color: rgba(167,139,250,0.3); }
+
+/* Fields + evidence split */
+.kb__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 440px); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .kb__grid { grid-template-columns: 1fr; } }
+
+.kb__cat { margin-bottom: 14px; }
+.kb__cat-h { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-subtle); margin-bottom: 6px; }
+.kb__field {
+  padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 6px;
+  background: var(--bg-card); cursor: pointer; transition: border-color 0.1s;
+}
+.kb__field:hover { border-color: var(--border-strong); }
+.kb__field.is-active { border-color: var(--accent); }
+.kb__field-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.kb__field-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.kb__lock { font-size: 11px; }
+.kb__agg-btn {
+  background: var(--bg-app); border: 1px solid var(--border); color: var(--accent);
+  border-radius: 6px; width: 24px; height: 22px; cursor: pointer; font-size: 13px; flex-shrink: 0;
+}
+.kb__agg-btn:hover { border-color: var(--accent); }
+
+.kb__stmt { display: flex; align-items: baseline; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+.kb__val { font-size: 13px; color: var(--text); }
+.kb__stmt--none { color: var(--text-subtle); font-style: italic; font-size: 12px; }
+.kb__src { font-size: 11px; color: var(--text-subtle); }
+.kb__trust { font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+.kb__trust--human { color: #4dd4ac; background: rgba(77,212,172,0.12); }
+.kb__trust--machine { color: var(--text-subtle); background: var(--bg-app); border: 1px solid var(--border); }
+.kb__trust--disputed { color: #f59e0b; background: rgba(245,158,11,0.12); }
+
+.kb__superseded { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+.kb__stmt--old .kb__val { text-decoration: line-through; color: var(--text-subtle); }
+
+.kb__agg { margin-top: 8px; padding: 8px; background: var(--bg-app); border-radius: 8px; border: 1px solid var(--border); }
+.kb__agg-sum { font-size: 13px; margin-bottom: 4px; }
+.kb__agg-sum b { color: var(--ok, #4dd4ac); }
+.kb__agg-item { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-muted); padding: 1px 0; }
+
+/* Evidence pane — sticks while the field list scrolls; scrolls internally when
+   the page image is taller than the viewport. */
+.kb__evidence { position: sticky; top: 0; align-self: start; max-height: calc(100vh - 90px); overflow-y: auto; }
+.kb__ev-empty, .kb__ev-note { color: var(--text-subtle); font-size: 12px; padding: 16px; text-align: center; }
+.kb__ev-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.kb__ev-snip { font-size: 12px; color: var(--text-muted); font-style: italic; margin-bottom: 8px; line-height: 1.5; }
+.kb__ev-page { position: relative; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.kb__ev-page img { display: block; width: 100%; }
+.kb__ev-hl { position: absolute; background: rgba(245, 200, 66, 0.32); border: 1px solid rgba(245, 200, 66, 0.8); border-radius: 2px; pointer-events: none; }
+
+/* ---- Party currency (novation) + registry grounding ---- */
+.kb__party--former { opacity: 0.55; }
+.kb__party-cur { color: #4dd4ac; font-style: normal; font-size: 10.5px; }
+.kb__party-old { color: var(--text-subtle); font-style: normal; font-size: 10.5px; }
+.kb__conflicts { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.kb__conflict { font-size: 12px; color: #f5c842; background: rgba(245, 200, 66, 0.07); border: 1px solid rgba(245, 200, 66, 0.25); border-radius: 7px; padding: 6px 10px; }
+.kb__conflict em { color: var(--text-subtle); font-style: normal; }
+
+/* Excel export of the aligned family (kb__bar). kb__counts already anchors
+   the right edge with margin-left auto; the button just follows it. */
+.kb__export {
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm, 6px);
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kb__export:hover { color: var(--text); border-color: var(--accent); }
+.kb__export:disabled { opacity: 0.55; cursor: default; }

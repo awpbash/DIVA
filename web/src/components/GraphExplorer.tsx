@@ -1,0 +1,319 @@
+/**
+ * Full knowledge-graph explorer tab.
+ *
+ *   ┌──── filters ────┐  ┌──── canvas (ExploreCanvas) ──┐  ┌── inspect ──┐
+ *   │ search…         │  │  Doc → Agreement → Section → │  │ props +     │
+ *   │ category chips  │  │  Fact → Hub/Ext/Proposal     │  │ provenance  │
+ *   │ group toggles   │  │  (expand a section to drill) │  │ + PDF jump  │
+ *   │ legend          │  │                              │  │             │
+ *   └─────────────────┘  └──────────────────────────────┘  └─────────────┘
+ *
+ * Works at *any* scope: a single contract (doc picked in the sidebar) or
+ * ALL documents (the default) — the cross-document identity hubs are the
+ * whole reason the all-docs view matters. Everything rendered comes from
+ * /graph/overview; the inspector reuses the citation/evidence machinery so a
+ * fact can be traced to its page + bbox highlight in the source PDF.
+ */
+import { useEffect, useMemo, useState } from "react";
+import { getHubGraph, getOverviewGraph } from "../api";
+import { DocumentMeta, GraphEdge, GraphNode, GraphPayload } from "../types";
+import { ExploreCanvas, ViewMode } from "./ExploreCanvas";
+import { GraphInspector } from "./GraphInspector";
+import { groupColorVar, groupForLabel, labelsInGroup, useGraphLegend } from "./graphTheme";
+import { IconClose, IconPanelRight } from "./Icon";
+
+
+// The fact labels the extractor emits, for the category filter chips. Comes
+// from the served legend, so the chips are this deployment's own fact types
+// rather than a list copied from whichever domain was built first.
+
+const DEFAULT_NODE_CAP = 220;
+
+// Stale-while-revalidate cache so tab-switches don't refetch.
+const OVERVIEW_CACHE = new Map<string, GraphPayload>();
+const cacheKey = (docId: string | null, labels: string[], limit: number) =>
+  `${docId ?? "__all"}::${[...labels].sort().join(",")}::${limit}`;
+
+
+interface Props {
+  doc: DocumentMeta | null;
+  /** Jump to a citation in the PDF panel — reuses the chat citation flow. */
+  onViewEvidence?: (evidenceId: string, docId: string) => void;
+}
+
+
+export function GraphExplorer({ doc, onViewEvidence }: Props) {
+  const legend = useGraphLegend();
+  const factLabels = useMemo(
+    () => [...labelsInGroup("fact")].filter(l => l !== "Fact").sort(),
+    [legend]);
+  const [labels, setLabels] = useState<Set<string>>(new Set());
+  // Select every fact category once the legend lands. Empty means "everything"
+  // to the API, so the first fetch is correct either way.
+  useEffect(() => { setLabels(new Set(factLabels)); }, [factLabels]);
+  const [hiddenGroups, setHiddenGroups] = useState<Set<string>>(new Set());
+  const [payload, setPayload] = useState<GraphPayload>({ nodes: [], edges: [] });
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<GraphEdge | null>(null);
+  const [limit, setLimit] = useState(DEFAULT_NODE_CAP);
+  const [loading, setLoading] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  // "full" = the whole graph (expand-on-click); "lens" = the cross-doc
+  // identity story only.
+  const [viewMode, setViewMode] = useState<ViewMode>("full");
+
+  // Clear the payload in the SAME render as the mode flip. Otherwise one frame
+  // renders the old graph re-columned for the new mode, and the fit-view
+  // animation kicked off in that hybrid frame can tween through a zero-size
+  // view and write NaN into the canvas transform (console SVG errors).
+  const switchMode = (m: ViewMode) => {
+    if (m === viewMode) return;
+    setViewMode(m);
+    setPayload({ nodes: [], edges: [] });
+  };
+
+  const docId = doc?.doc_id ?? null;
+
+  useEffect(() => {
+    const labelList = [...labels];
+    const key = `${viewMode}::${cacheKey(docId, labelList, limit)}`;
+    const cached = OVERVIEW_CACHE.get(key);
+    if (cached) {
+      setPayload(cached);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    // Clear first so a lens layout never paints over stale full-graph nodes.
+    setPayload({ nodes: [], edges: [] });
+    let cancelled = false;
+    // docId === null => all-documents (cross-doc) view. Both endpoints treat
+    // a missing doc_id as "span every contract", which is the lens's whole point.
+    const fetcher = viewMode === "lens"
+      ? getHubGraph(docId ?? undefined)
+      : getOverviewGraph({ docId: docId ?? undefined, labels: labelList, limit });
+    fetcher
+      .then(p => {
+        OVERVIEW_CACHE.set(key, p);
+        if (cancelled) return;
+        setPayload(p);
+        setSelectedNode(s => (s && p.nodes.find(n => n.id === s.id)) ? s : null);
+        setSelectedEdge(null);
+      })
+      .catch(err => console.error("graph:", err))
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docId, labels, limit, viewMode]);
+
+  // Esc exits focus mode.
+  useEffect(() => {
+    if (!focusMode) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFocusMode(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [focusMode]);
+
+  // Live group counts for the legend / filter affordance.
+  const groupCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const n of payload.nodes) {
+      const g = groupForLabel(n.label);
+      c[g] = (c[g] || 0) + 1;
+    }
+    return c;
+  }, [payload]);
+
+  const hasSelection = !!selectedNode || !!selectedEdge;
+  const showDetail = !focusMode && hasSelection;
+  const showSidebar = !focusMode;
+
+  const toggleLabel = (lbl: string) =>
+    setLabels(curr => {
+      const next = new Set(curr);
+      if (next.has(lbl)) next.delete(lbl);
+      else next.add(lbl);
+      return next;
+    });
+
+  const toggleGroup = (g: string) =>
+    setHiddenGroups(curr => {
+      const next = new Set(curr);
+      if (next.has(g)) next.delete(g);
+      else next.add(g);
+      return next;
+    });
+
+  return (
+    <div className="pane" style={{ minHeight: 0 }}>
+      <div className="pane__header">
+        <div className="pane__title">Knowledge graph</div>
+        <div className="pane__subtitle">
+          · {doc ? doc.title : "all documents"} · {payload.nodes.length} nodes / {payload.edges.length} edges
+        </div>
+        {loading && <div className="pane__loading">loading…</div>}
+        <div style={{ flex: 1 }} />
+        <div className="graph-mode" role="tablist" aria-label="Graph view">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "full"}
+            className={`graph-mode__btn${viewMode === "full" ? " graph-mode__btn--on" : ""}`}
+            onClick={() => switchMode("full")}
+          >
+            Full graph
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "lens"}
+            className={`graph-mode__btn${viewMode === "lens" ? " graph-mode__btn--on" : ""}`}
+            onClick={() => switchMode("lens")}
+            title="Show only the entities shared across documents and how they link them"
+          >
+            Cross-doc lens
+          </button>
+        </div>
+        <button
+          type="button"
+          className="pane__icon-btn"
+          onClick={() => setFocusMode(f => !f)}
+          title={focusMode ? "Show panels (Esc)" : "Maximise canvas"}
+          aria-label={focusMode ? "Show panels" : "Maximise canvas"}
+        >
+          {focusMode ? <IconClose size={14} /> : <IconPanelRight size={14} />}
+        </button>
+      </div>
+
+      <div
+        className="explorer"
+        style={{
+          gridTemplateColumns: `${showSidebar ? "260px " : ""}1fr${showDetail ? " 340px" : ""}`,
+        }}
+      >
+        {showSidebar && (
+          <aside className="explorer__sidebar">
+            <div className="explorer__filter-group">
+              <h4>Legend</h4>
+              <div className="legend">
+                {legend.groups.map(l => {
+                  const off = hiddenGroups.has(l.group);
+                  const count = groupCounts[l.group] || 0;
+                  return (
+                    <button
+                      key={l.group}
+                      type="button"
+                      className={`legend__row ${off ? "legend__row--off" : ""}`}
+                      onClick={() => toggleGroup(l.group)}
+                      title={`${l.hint} — click to ${off ? "show" : "hide"}`}
+                    >
+                      <span
+                        className="legend__swatch"
+                        style={{ background: groupColorVar(l.group) }}
+                      />
+                      <span className="legend__label">{l.label}</span>
+                      <span className="legend__count">{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {viewMode === "full" && (
+              <>
+                <div className="explorer__filter-group">
+                  <h4>Fact categories</h4>
+                  <div className="explorer__chips">
+                    {factLabels.map(lbl => {
+                      const on = labels.has(lbl);
+                      return (
+                        <button
+                          key={lbl}
+                          type="button"
+                          className={`chip ${on ? "chip--on" : ""}`}
+                          onClick={() => toggleLabel(lbl)}
+                        >
+                          {lbl}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="explorer__filter-group">
+                  <h4>Facts shown</h4>
+                  <input
+                    type="range"
+                    min={40}
+                    max={400}
+                    step={20}
+                    value={limit}
+                    onChange={e => setLimit(Number(e.target.value))}
+                    className="explorer__range"
+                  />
+                  <div className="explorer__range-readout">{limit} facts</div>
+                </div>
+              </>
+            )}
+
+            {viewMode === "lens" && (
+              <div className="explorer__filter-group explorer__hint">
+                <h4>Cross-doc lens</h4>
+                <p className="explorer__note">
+                  Shows only the entities that link documents together, and how
+                  they match the external customer and block registers. Detail
+                  inside each document is hidden.
+                </p>
+              </div>
+            )}
+
+            <div className="explorer__filter-group explorer__hint">
+              <h4>Tips</h4>
+              <ul>
+                {viewMode === "full" ? (
+                  <>
+                    <li>Click a section to reveal its facts.</li>
+                    <li>Click a node to inspect it and trace it to its source.</li>
+                    <li>Click a dashed edge to see why the link was made.</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Each line is one document → entity.</li>
+                    <li>Click a node to see where it came from.</li>
+                    <li>Click an edge to see the signals behind the match.</li>
+                  </>
+                )}
+                <li>Scroll to zoom, drag to pan.</li>
+              </ul>
+            </div>
+          </aside>
+        )}
+
+        <main className="explorer__main">
+          <div className="rfgraph rfgraph--explore">
+            <ExploreCanvas
+              payload={payload}
+              mode={viewMode}
+              hiddenGroups={hiddenGroups}
+              selectedNodeId={selectedNode?.id ?? null}
+              onSelectNode={n => { setSelectedNode(n); if (n) setSelectedEdge(null); }}
+              onSelectEdge={e => { setSelectedEdge(e); if (e) setSelectedNode(null); }}
+            />
+          </div>
+        </main>
+
+        {showDetail && (
+          <aside className="explorer__detail">
+            <GraphInspector
+              node={selectedNode}
+              edge={selectedEdge}
+              fallbackDocId={docId}
+              onViewEvidence={onViewEvidence}
+              onClose={() => { setSelectedNode(null); setSelectedEdge(null); }}
+            />
+          </aside>
+        )}
+      </div>
+    </div>
+  );
+}

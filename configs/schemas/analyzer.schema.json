@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://verbatim.dev/schemas/analyzer.schema.json",
+  "title": "Analyzer",
+  "description": "Top-level definition for a doctype analyzer. v2 shape — no per-field extraction directives. Declares the fact categories the analyzer enables and the role taxonomy used during categorisation. Goes in configs/analyzers/<doctype>/analyzer.yaml.",
+  "type": "object",
+  "required": ["id", "version", "categories"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^_?[a-z][a-z0-9_]*$",
+      "description": "Stable identifier. Folder name MUST match. Leading underscore is reserved for inheritable base analyzers (e.g. _universal)."
+    },
+    "version": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" },
+        { "type": "number" }
+      ],
+      "description": "Semver-ish version. Bump to invalidate downstream caches."
+    },
+    "extends": {
+      "type": "string",
+      "description": "Another analyzer id whose categories + roles are merged in first. Typically '_universal'."
+    },
+    "classify_when": {
+      "type": "object",
+      "description": "Rules step 4a (outline) uses to nominate this analyzer based on the LLM doctype guess and document title.",
+      "additionalProperties": false,
+      "properties": {
+        "any": { "type": "array", "items": { "type": "string" } },
+        "all": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "categories": {
+      "type": "array",
+      "description": "Fact categories this analyzer enables. The step 4c (categorise) call constrains the LLM's category choice to this list. OPEN vocabulary: a domain declares the categories it needs. The binding check is not this schema but test_ontology_compile.py::test_analyzer_categories_match_their_ontology, which requires every analyzer's categories to match its ontology's declared extraction categories EXACTLY, for every shipped doctype. That catches typos and orphans far better than a closed list, and it does not force every future domain into the first domain's vocabulary.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "roles": {
+      "type": "object",
+      "description": "Per-category role taxonomy. Step 4c assigns one role per fact when it matches a defined role for that category. role=null otherwise.",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "uniqueItems": true
+      }
+    },
+    "confidence_thresholds": {
+      "type": "object",
+      "description": "Override pipeline.yaml load.confidence defaults for this doctype.",
+      "additionalProperties": false,
+      "properties": {
+        "verified":  { "type": "number", "minimum": 0, "maximum": 1 },
+        "tentative": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form note for maintainers. Ignored by the loader."
+    }
+  }
+}

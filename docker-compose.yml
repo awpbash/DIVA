@@ -1,0 +1,63 @@
+# The whole stack: a database and one app container.
+#
+#   docker compose up -d cosmos     just the database (what `scripts.setup` needs)
+#   docker compose up -d            everything, on http://localhost:8000
+#
+# Configuration is entirely in .env. See .env.example for the annotated list.
+
+services:
+  cosmos:
+    # Azure Cosmos DB emulator (Linux vnext), NoSQL API over plain HTTP.
+    # Data is NOT durable across container recreation, and that is fine: the
+    # knowledge base is a disposable projection. `python -m scripts.rebuild_kb`
+    # repopulates it from storage/ for free, with no model calls.
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    container_name: verbatim_try_cosmos
+    restart: unless-stopped
+    ports:
+      # 8081 on the host is already taken by the other project's emulator.
+      - "8181:8081"
+    environment:
+      PROTOCOL: http
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8081/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  app:
+    # FastAPI serves the JSON API and the built React bundle from one container:
+    # one origin, no nginx, no CORS, no proxy route list to maintain.
+    build: .
+    container_name: verbatim_try_app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Default to the emulator on the compose network. Set COSMOS_URI and
+      # COSMOS_KEY in .env to point at a real account instead.
+      COSMOS_URI: "${COSMOS_URI:-http://cosmos:8081}"
+      COSMOS_KEY: "${COSMOS_KEY:-}"
+    # Hot reload: uvicorn watches the mounted SOURCE directories and restarts on
+    # edit. Scoped to source only, because watching the large, pipeline-written
+    # storage/ tree would be slow and would reload on every cache write.
+    command: >
+      python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+      --reload --reload-dir /app/api --reload-dir /app/pipeline --reload-dir /app/configs
+    ports:
+      # 8000 on the host is already taken by the other project's app.
+      - "8100:8000"
+    volumes:
+      # Uploaded PDFs and every pipeline artifact. The one directory to back up.
+      - ./storage:/app/storage
+      # Live source mounts: run the current backend without an image rebuild.
+      # The image already carries the installed dependencies. Production builds
+      # bake the code in via the Dockerfile COPY instead.
+      - ./api:/app/api
+      - ./pipeline:/app/pipeline
+      - ./configs:/app/configs
+      - ./scripts:/app/scripts
+      # eval/ carries the review-record builder the admin extract chain calls.
+      - ./eval:/app/eval
+    depends_on:
+      cosmos:
+        condition: service_healthy

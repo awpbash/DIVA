@@ -1,0 +1,57 @@
+/* Review overview — document list (SharePoint-library style). */
+.rdl { display: flex; flex-direction: column; min-height: 0; height: 100%; padding: var(--s-4) var(--s-6); }
+.rdl__empty { color: var(--text-subtle); padding: var(--s-10); text-align: center; font-size: 13px; }
+
+.rdl__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-4); flex-wrap: wrap; }
+.rdl__head h3 { margin: 0 0 4px; font-size: 16px; }
+
+/* Drill-in breadcrumb (folder list ↔ inside a folder). */
+.rdl__crumbs { display: flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 600; margin: 0 0 4px; min-width: 0; }
+.rdl__crumb { background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; }
+.rdl__crumb:hover { text-decoration: underline; }
+.rdl__crumb-sep { color: var(--text-subtle); font-weight: 400; }
+.rdl__crumb-cur { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rdl__sub { margin: 0; font-size: 12.5px; color: var(--text-muted); max-width: 560px; line-height: 1.5; }
+.rdl__sub b { color: var(--text); }
+.rdl__totals { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.rdl__tot-n { font-size: 22px; font-weight: 700; color: var(--teal); line-height: 1.1; }
+.rdl__tot-l { font-size: 11px; color: var(--text-muted); }
+.rdl__tot-s { font-size: 11px; color: var(--text-subtle); }
+
+.rdl__scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); }
+.rdl__table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rdl__table thead th {
+  position: sticky; top: 0; z-index: 1;
+  text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--text-subtle);
+  background: var(--bg-sidebar-2); border-bottom: 1px solid var(--border);
+  padding: 8px 12px; white-space: nowrap;
+}
+.rdl__c-doc { min-width: 300px; }
+.rdl__c-num, .rdl__num { text-align: right; }
+.rdl__c-prog { min-width: 140px; }
+
+.rdl__row { cursor: pointer; }
+.rdl__row:hover td { background: var(--bg-card-hover); }
+.rdl__row td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.rdl__doc { font-weight: 500; color: var(--text); max-width: 420px; }
+.rdl__type, .rdl__date { color: var(--text-muted); white-space: nowrap; }
+.rdl__num { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rdl__na { color: var(--text-subtle); }
+
+.rdl__prog { display: inline-flex; align-items: center; gap: 8px; }
+.rdl__bar {
+  width: 72px; height: 5px; border-radius: 3px; background: var(--bg-elevated);
+  overflow: hidden; display: inline-block;
+}
+.rdl__bar i { display: block; height: 100%; background: var(--teal); border-radius: 3px; }
+.rdl__pct { font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.rdl__pill {
+  display: inline-block; font-size: 11px; font-weight: 600;
+  padding: 2px 9px; border-radius: var(--radius-xs); white-space: nowrap;
+}
+.rdl__pill--reviewed   { color: #7ee2c0; background: rgba(77, 212, 172, 0.14); }
+.rdl__pill--in_review  { color: #8ab4ff; background: rgba(120, 165, 255, 0.14); }
+.rdl__pill--unreviewed { color: #f0c46a; background: rgba(245, 158, 11, 0.12); }
+.rdl__pill--empty      { color: var(--text-subtle); background: var(--bg-elevated); }

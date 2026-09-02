@@ -1,0 +1,404 @@
+# =============================================================================
+# DOCTYPE PACK: commercial_agreement
+#
+# Purpose: provide a compact public domain pack that exercises the configurable
+# graph-build contract without shipping private schema material.
+#
+# Modelled on real EDGAR commercial contracts (CUAD): NDAs, licence, supply and
+# distribution agreements, plus their amendments. Minimal but structurally
+# complete — every section a doctype pack may declare is exercised at least once.
+#
+# It keeps optional machinery optional:
+#   * No equipment, rate, measurement, formula or cost_category fact types.
+#     Those optional parts of the engine must be genuinely optional.
+#   * Party roles are disclosing/receiving and licensor/licensee.
+#   * A Payment fact label and a CanonicalJurisdiction hub.
+#
+# The DOCTYPE-INVARIANT engine lives in _base.yaml and is inherited via
+# `extends`. This file declares ONLY what is specific to commercial agreements.
+# =============================================================================
+
+doctype: commercial_agreement
+version: 1
+extends: _base
+
+# =============================================================================
+# 1. FACT TYPES
+# =============================================================================
+fact_types:
+
+  # ----- parties ----------------------------------------------------------
+  organization:
+    label: Party
+    key: party_id
+    raw_labels: [name-or-org, name_or_org, organization, company]
+    shape: '{"name": "<full legal name>", "jurisdiction_of_incorporation": "<state/country or null>", "notice_address": "<address or null>"}'
+    bundling: 'Bundle stubs that refer to the SAME organization across pages (name + incorporation + notice block). Different organizations stay separate.'
+    properties: [party_id, doc_id, agreement_id, name, normalized_name, role,
+                 entity_type, address, jurisdiction_of_incorporation, title,
+                 confidence]
+    indexed:    [role, normalized_name]
+    filterable: [entity_type, role, normalized_name, name]
+    summary:    [name, role, address]
+
+  person:
+    label: Party
+    key: party_id
+    raw_labels: [person, individual, signatory]
+    shape: '{"name": "<full name>", "title": "<job title or null>"}'
+    bundling: 'One fact per named individual. The same person signing twice merges.'
+    properties: [party_id, doc_id, agreement_id, name, normalized_name, role,
+                 entity_type, address, jurisdiction_of_incorporation, title,
+                 confidence]
+    indexed:    [role, normalized_name]
+    filterable: [entity_type, role, normalized_name, name]
+    summary:    [name, role, title]
+
+  # ----- places: governing law, venue, notice addresses -------------------
+  place:
+    label: Location
+    key: location_id
+    raw_labels: [place, location, address, jurisdiction]
+    shape: '{"name": "<verbatim place or jurisdiction>", "kind": "<governing_law|venue|notice_address>"}'
+    bundling: 'Each distinct named place = one fact. The governing-law state and the venue court are separate facts even when they name the same state.'
+    properties: [location_id, doc_id, agreement_id, name, normalized_jurisdiction,
+                 location_type, role, address, confidence]
+    indexed:    [role, normalized_jurisdiction]
+    filterable: [location_type, role, normalized_jurisdiction, name]
+    summary:    [name, role]
+
+  # ----- money: the one measurable axis in this domain --------------------
+  money:
+    label: Payment
+    key: payment_id
+    raw_labels: [money, money-or-rate, money_or_rate, fee]
+    shape: '{"amount": <number>, "currency": "<symbol like USD|EUR or null>", "normalized_parameter": "<canonical name e.g. license_fee|liability_cap|minimum_commitment>", "bound": "<minimum|maximum|target|exact>"}'
+    bundling: 'Each specific amount = one payment fact. Identical amounts across pages merge. A clause stating both a floor AND a cap yields TWO facts, distinguished by `bound`.'
+    properties: [payment_id, doc_id, agreement_id, name, payment_type, amount,
+                 currency, payer_role, payment_frequency, normalized_parameter,
+                 bound, confidence]
+    indexed:    [payment_type, normalized_parameter, bound]
+    filterable: [payment_type, currency, payer_role, payment_frequency, name,
+                 normalized_parameter, bound]
+    summary:    [name, amount, currency]
+    measure:
+      value_field: amount
+      unit_field: currency
+      parameter_field: normalized_parameter
+      bound_field: bound
+      parameter_fallback: [payment_type]
+      ops: [min, max, avg, sum]
+
+  # ----- dates ------------------------------------------------------------
+  date:
+    label: Date
+    key: date_id
+    raw_labels: [date]
+    shape: 'Absolute: {"type":"absolute","iso":"YYYY-MM-DD"}. Relative: {"type":"relative","offset":<n>,"unit":"days|months|years","anchor":"<verbatim anchor>"}. Named: {"type":"named","anchor":"<verbatim phrase>"}.'
+    bundling: 'Same date merges. Agreement date, effective date and expiration date stay separate facts.'
+    properties: [date_id, doc_id, agreement_id, date_type, type, date_text,
+                 date_value, anchor, offset, unit, confidence]
+    indexed:    [date_type]
+    filterable: [date_type, type, date_text]
+    summary:    [date_text, date_type]
+
+  # ----- modal facts (ROLE-JOINED to parties) -----------------------------
+  obligation:
+    label: Obligation
+    key: obligation_id
+    raw_labels: [obligation]
+    shape: '{"subject_role":"disclosing_party|receiving_party|licensor|licensee|both|other","subject_party":"<name or null>","modal":"shall|must|will|is required to","canonical_action":"<snake_case verb_phrase>","object":"<what is acted on>","beneficiary_role":"<role or null>","deadline":"<verbatim deadline or null>"}'
+    bundling: 'Each distinct shall-clause = one obligation. Reuse canonical_action for semantically identical duties across the document.'
+    properties: [obligation_id, doc_id, agreement_id, action, canonical_action,
+                 actor_role, actor_party, modality, object, recipient_role,
+                 deadline_text, confidence]
+    indexed:    [actor_role, canonical_action]
+    filterable: [actor_role, recipient_role, canonical_action, action]
+    summary:    [canonical_action, actor_role, object]
+    role_join:  {role_field: actor_role, to: Party, edge: IMPOSED_ON}
+
+  right:
+    label: Right
+    key: right_id
+    raw_labels: [right, entitlement]
+    shape: '{"holder_role":"disclosing_party|receiving_party|licensor|licensee|both|other","modal":"may|is entitled to|has the right to","canonical_action":"<snake_case verb_phrase>","object":"<what the right is over>","trigger":"<verbatim trigger or null>"}'
+    bundling: 'Each distinct entitlement = one right. Termination for convenience and termination for cause are separate rights.'
+    properties: [right_id, doc_id, agreement_id, action, canonical_action,
+                 holder_role, modality, object, trigger_text, confidence]
+    indexed:    [holder_role, canonical_action]
+    filterable: [holder_role, canonical_action, action]
+    summary:    [canonical_action, holder_role, object]
+    role_join:  {role_field: holder_role, to: Party, edge: HELD_BY}
+
+  # ----- qualifiers -------------------------------------------------------
+  condition:
+    label: Condition
+    key: condition_id
+    raw_labels: [condition, limitation, carve_out]
+    shape: '{"text": "<verbatim condition clause>", "condition_type": "<precedent|exception|limitation|carve_out>"}'
+    bundling: 'Each distinct condition = one fact. A clause carrying two independent provisos yields two facts.'
+    properties: [condition_id, doc_id, agreement_id, condition_text,
+                 condition_type, role, confidence]
+    indexed:    [condition_type]
+    filterable: [condition_type, role, condition_text]
+    summary:    [condition_text, condition_type]
+
+  event:
+    label: Event
+    key: event_id
+    raw_labels: [event]
+    shape: '{"event_type": "<breach|insolvency|change_of_control|force_majeure|expiry>", "description": "<verbatim description>"}'
+    bundling: 'Each named contractual event = one fact.'
+    properties: [event_id, doc_id, agreement_id, event_type, description,
+                 role, confidence]
+    indexed:    [event_type]
+    filterable: [event_type, role, description]
+    summary:    [event_type, description]
+
+  # ----- vocabulary + navigation ------------------------------------------
+  defined_term:
+    label: DefinedTerm
+    key: term_id
+    raw_labels: [defined_term, definition]
+    shape: '{"term": "<the capitalised defined term>", "definition": "<verbatim definition text>"}'
+    bundling: 'One fact per defined term. A term redefined in an amendment is a separate fact on that document.'
+    properties: [term_id, doc_id, agreement_id, term, normalized_term,
+                 definition, confidence]
+    indexed:    [normalized_term]
+    filterable: [normalized_term, term]
+    summary:    [term, definition]
+
+  reference:
+    label: Reference
+    key: reference_id
+    raw_labels: [reference, cross_reference]
+    shape: '{"target": "<verbatim reference text e.g. Section 4.2 or Exhibit A>", "kind": "<internal|external>"}'
+    bundling: 'Each distinct referenced target = one fact.'
+    properties: [reference_id, doc_id, agreement_id, target_text, reference_kind,
+                 role, confidence]
+    indexed:    [reference_kind]
+    filterable: [reference_kind, role, target_text]
+    summary:    [target_text, reference_kind]
+
+  schedule:
+    label: Schedule
+    key: schedule_id
+    raw_labels: [schedule, exhibit, annex]
+    shape: '{"label": "<verbatim label e.g. Exhibit A or Schedule 1>", "title": "<schedule title or null>"}'
+    bundling: 'One fact per schedule or exhibit.'
+    properties: [schedule_id, doc_id, agreement_id, schedule_num, title,
+                 role, confidence]
+    indexed:    [schedule_num]
+    filterable: [schedule_num, role, title]
+    summary:    [schedule_num, title]
+
+  # ----- a category the universal set does NOT have -----------------------
+  # A warranty is an assertion of PRESENT FACT ("the Licensor warrants that it
+  # owns the Intellectual Property"), not a duty to act. Its falsity is itself
+  # the breach, which is why it cannot be folded into obligation or condition.
+  # Declaring it is the ordinary case for a new domain, and it is exactly what
+  # configs/schemas/analyzer.schema.json's closed 17-name enum forbids today.
+  warranty:
+    label: Warranty
+    key: warranty_id
+    raw_labels: [warranty, representation]
+    shape: '{"warrantor_role":"disclosing_party|receiving_party|licensor|licensee|both|other","assertion":"<verbatim warranted statement>","canonical_action":"<snake_case e.g. warrants_ownership|warrants_no_infringement>","disclaimed":<true|false>}'
+    bundling: 'Each distinct warranted statement = one fact. An express warranty and its disclaimer stay separate facts.'
+    properties: [warranty_id, doc_id, agreement_id, action, canonical_action,
+                 warrantor_role, assertion, disclaimed, confidence]
+    indexed:    [warrantor_role, canonical_action]
+    filterable: [warrantor_role, canonical_action, disclaimed, action]
+    summary:    [canonical_action, warrantor_role, assertion]
+    role_join:  {role_field: warrantor_role, to: Party, edge: WARRANTED_BY}
+
+dropped_raw_labels: [identifier, other, unknown, ""]
+
+# =============================================================================
+# 2. LOAD MAPS — how a normalised stub becomes node properties
+# =============================================================================
+load_maps:
+  organization:
+    coalesce: {name: ["n:name", "$value", "lit:"], entity_type: ["lit:company"]}
+    rename:   {address: notice_address,
+               jurisdiction_of_incorporation: jurisdiction_of_incorporation}
+    normalized: {normalized_name: name}
+  person:
+    coalesce: {name: ["n:name", "$value", "lit:"], entity_type: ["lit:person"]}
+    normalized: {normalized_name: name}
+  place:
+    coalesce: {name: ["n:name", "$value", "lit:"], location_type: ["n:kind", "$role", "lit:other"]}
+    normalized: {normalized_jurisdiction: name}
+  money:
+    coalesce: {name: ["$role", "lit:payment"], payment_type: ["$role", "lit:other"],
+               payment_frequency: ["lit:one_off"]}
+  date:
+    rename:   {date_value: iso}
+    coalesce: {date_text: ["$value", "lit:"], date_type: ["$role", "lit:other"]}
+  obligation:
+    rename: {actor_role: subject_role, modality: modal,
+             recipient_role: beneficiary_role, deadline_text: deadline}
+    alias:  {action: canonical_action}
+  right:
+    rename: {modality: modal, trigger_text: trigger}
+    alias:  {action: canonical_action}
+  warranty:
+    alias: {action: canonical_action}
+  condition:
+    rename:   {condition_text: text}
+    coalesce: {condition_type: ["n:condition_type", "$role", "lit:other"]}
+  event:
+    coalesce: {event_type: ["n:event_type", "$role", "lit:other"],
+               description: ["$value", "lit:"]}
+  defined_term:
+    normalized: {normalized_term: term}
+  reference:
+    coalesce: {target_text: ["n:target", "$value", "lit:"],
+               reference_kind: ["n:kind", "lit:internal"]}
+  schedule:
+    coalesce: {schedule_num: ["n:label", "$value", "lit:"]}
+
+# =============================================================================
+# 3. IDENTITY — cross-document hubs
+#    Note the absence of CanonicalEquipmentType and CanonicalSite. A domain
+#    declares the hubs it needs; nothing downstream may assume a fixed set.
+# =============================================================================
+identity:
+  resolution:
+    block_on: key
+    confirm_with: {method: embedding_cosine, threshold: 0.90}
+    review_gate: {below: 0.90, to: Proposal}
+    auditable: true
+
+  hubs:
+    CanonicalParty:
+      from: Party
+      key: normalized_name
+      mint_when: {role_in: [disclosing_party, receiving_party, licensor, licensee]}
+      normalize: legal_suffix
+      edge: RESOLVES_TO
+      pivotable: true
+      role_scoped: true
+    CanonicalJurisdiction:
+      from: Location
+      key: normalized_jurisdiction
+      mint_when: {role_in: [governing_law, venue]}
+      normalize: text
+      edge: RESOLVES_TO
+      pivotable: true
+    CanonicalTerm:
+      from: DefinedTerm
+      key: normalized_term
+      edge: RESOLVES_TO
+      pivotable: false
+
+  legal_suffixes: [inc, incorporated, corp, corporation, co, llc, llp, lp,
+                   ltd, limited, plc, gmbh, sa, nv, bv, pte]
+
+# =============================================================================
+# 4. DERIVED EDGES — deterministic, explainable, no LLM
+# =============================================================================
+edges:
+  derived:
+    CONDITIONED_ON:
+      from: [Obligation, Right, Payment]
+      to:   [Condition]
+      derive: {method: co_location, tiers: [same_block, cross_ref, same_section]}
+      provenance: derived
+      description: The source fact applies only if this condition holds.
+    TRIGGERED_BY:
+      from: [Obligation, Right, Payment]
+      to:   [Event]
+      derive: {method: co_location, tiers: [same_block, cross_ref, same_section]}
+      provenance: derived
+      description: The source fact takes effect when this event occurs.
+    IMPOSED_ON:
+      from: [Obligation]
+      to:   [Party]
+      derive: {method: role_join, on_field: actor_role}
+      provenance: derived
+      description: Party bound by the obligation (joined on actor_role = role).
+    HELD_BY:
+      from: [Right]
+      to:   [Party]
+      derive: {method: role_join, on_field: holder_role}
+      provenance: derived
+      description: Party holding the right (joined on holder_role = role).
+    WARRANTED_BY:
+      from: [Warranty]
+      to:   [Party]
+      derive: {method: role_join, on_field: warrantor_role}
+      provenance: derived
+      description: Party giving the warranty (joined on warrantor_role = role).
+    PAYABLE_BY:
+      from: [Payment]
+      to:   [Party]
+      derive: {method: role_join, on_field: payer_role}
+      provenance: derived
+      description: Party that owes the amount (joined on payer_role = role).
+    GOVERNED_BY:
+      from: [Obligation, Right, Condition]
+      to:   [Location]
+      derive: {method: co_location, tiers: [same_section]}
+      provenance: derived
+      description: The governing-law or venue clause that covers this fact.
+    USES_TERM:
+      from: [Fact]
+      to:   [DefinedTerm]
+      derive: {method: text_match, case_sensitive: true, word_bounded: true,
+               hub_suppression: 0.10}
+      provenance: derived
+      description: The fact's evidence text uses this defined term.
+    REFERENCES_SCHEDULE:
+      from: [Fact]
+      to:   [Schedule]
+      derive: {method: text_match, label_match: true}
+      provenance: derived
+      description: The fact's evidence text references this schedule by label.
+
+# =============================================================================
+# 5. ASSERTABLE RELATION MENU — the only place the LLM touches relations
+# =============================================================================
+assertable:
+  LIMITED_BY:
+    from: [Obligation, Right, Payment]
+    to:   [Condition]
+    llm_description: The source fact is narrowed, capped, or limited by the condition.
+    evidence: required
+    domain_range_gate: true
+    insert:
+      asserted_llm: {min_confidence: 0.75}
+      else: proposed
+  EXCEPTION_TO:
+    from: [Obligation, Right, Payment]
+    to:   [Condition]
+    llm_description: The condition states an exception or carve-out to the source fact.
+    evidence: required
+    domain_range_gate: true
+    insert:
+      asserted_llm: {min_confidence: 0.75}
+      else: proposed
+  SURVIVES:
+    from: [Obligation]
+    to:   [Event]
+    llm_description: The obligation continues to bind after the event (typically expiry or termination).
+    evidence: required
+    domain_range_gate: true
+    insert:
+      asserted_llm: {min_confidence: 0.80}
+      else: proposed
+
+# =============================================================================
+# 6. AGGREGATION SURFACE
+#    One measurable label (Payment) and two pivots. The planner must read this
+#    from config, never assume it.
+# =============================================================================
+aggregation:
+  pivots:
+    - {hub: CanonicalParty, role_scoped: true}
+    - {hub: CanonicalJurisdiction}
+  measures:
+    - {label: Payment, parameter_field: normalized_parameter}
+  reductions: [min, max, avg, sum, count]
+  unit_safety: true
+  coverage_reporting: true
+  materialize_rollups: false

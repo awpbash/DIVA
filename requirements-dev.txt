@@ -1,0 +1,11 @@
+# Development and CI only. Runtime dependencies are in requirements.txt.
+-r requirements.txt
+
+ruff>=0.6            # lint: correctness rules only, config in pyproject.toml
+                     # httpx (fastapi.testclient's transport) is a runtime
+                     # dependency now, so it lives in requirements.txt
+
+# Authoring tools. Only needed to REGENERATE artifacts that are committed, so
+# an ordinary contributor never installs them and CI does not either.
+reportlab>=4.0       # examples/make_corpus.py renders the sample contracts to PDF
+matplotlib>=3.8      # examples/make_corpus.py draws the one figure page

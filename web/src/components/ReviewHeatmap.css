@@ -1,0 +1,43 @@
+/* Review coverage heatmap — documents × categories. */
+.hm { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.hm__empty { padding: 48px; text-align: center; color: var(--text-subtle); }
+.hm__empty code { background: var(--bg-card); padding: 2px 6px; border-radius: 5px; font-size: 12px; }
+
+.hm__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 14px 18px 10px; }
+.hm__head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.hm__sub { margin: 4px 0 0; font-size: 12px; color: var(--text-subtle); max-width: 620px; line-height: 1.45; }
+.hm__overall { text-align: right; flex-shrink: 0; }
+.hm__overall-pct { display: block; font-size: 26px; font-weight: 700; color: #4dd4ac; line-height: 1; }
+.hm__overall-lbl { font-size: 11px; color: var(--text-subtle); }
+
+.hm__scroll { overflow: auto; padding: 0 18px; flex: 1; }
+.hm__table { border-collapse: separate; border-spacing: 3px; }
+.hm__corner, .hm__cat {
+  position: sticky; top: 0; z-index: 2; background: var(--bg-app);
+  font-size: 10.5px; font-weight: 600; color: var(--text-muted);
+  padding: 6px 8px; text-align: left; vertical-align: bottom;
+}
+.hm__cat { max-width: 84px; }
+.hm__cat span { display: block; white-space: normal; line-height: 1.2; }
+.hm__cat--total { color: var(--text); }
+.hm__corner { left: 0; z-index: 3; }
+
+.hm__row { cursor: pointer; }
+.hm__doc {
+  position: sticky; left: 0; z-index: 1; background: var(--bg-card);
+  font-size: 12px; padding: 6px 10px; max-width: 240px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; border-radius: 6px;
+}
+.hm__row:hover .hm__doc { background: var(--bg-hover, var(--border)); color: var(--text); }
+.hm__cell {
+  min-width: 52px; height: 34px; text-align: center; border-radius: 6px;
+  font-size: 10.5px; font-variant-numeric: tabular-nums;
+  transition: transform 0.08s var(--ease-out);
+}
+.hm__row:hover .hm__cell { transform: scale(1.04); }
+.hm__cell--total { font-weight: 700; }
+
+.hm__legend { display: flex; gap: 16px; padding: 10px 18px; font-size: 11px; color: var(--text-subtle); border-top: 1px solid var(--border); }
+.hm__legend span { display: inline-flex; align-items: center; gap: 6px; }
+/* Border so the "not stated" swatch (near-transparent fill) stays visible. */
+.hm__legend i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; border: 1px solid var(--border); }

@@ -1,0 +1,94 @@
+name: CI
+
+# Everything here is free and deterministic: no model calls, no API key, no
+# database. If a check needs either of those it does not belong in CI.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: python -m ruff check .
+
+      - name: Tests
+        run: python -m pytest tests/
+
+      - name: Configuration compiles for every declared domain
+        # The suite covers the active domain. This proves the others still
+        # compile, which is what breaks when the schema layer changes.
+        run: |
+          python - <<'PY'
+          from pipeline import ontology
+          from pipeline.extraction.pack import load as load_pack
+          from pipeline.kb.opsview_spec import load as load_view
+          for domain in ontology.available_doctypes():
+              load_pack(domain)
+              load_view(doctype=domain)
+              print(f"ok  {domain}")
+          PY
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      # `npm run build` is tsc --noEmit followed by vite build, so this is
+      # both the typecheck and the proof that the bundle still assembles.
+      - run: npm run build
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

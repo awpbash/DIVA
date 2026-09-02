@@ -1,0 +1,34 @@
+# =============================================================================
+# VIEW-TIME ACCESS POLICY for the `commercial_agreement` domain.
+#
+# Per-domain because the labels that carry money are domain vocabulary. This
+# domain records monetary terms as Payment. Another records them as Charge and
+# Rate. A single shared list matched one domain and silently matched nothing on
+# the other, which serves restricted values to viewers who should not see them
+# with no error anywhere.
+#
+# Structure and enforcement are identical to `sensitivity.yaml`, which stays as
+# the fallback for a domain that ships no file of its own. See that file for
+# how the two enforcement points work.
+# =============================================================================
+
+classes:
+  financial:
+    description: Monetary terms, including fees, caps, deposits and commitments.
+    labels: [Payment]
+    raw_labels: [money, money_or_rate, money-or-rate, rate]
+
+roles:
+  default:                 # everyday accounts, monetary terms hidden
+    deny: [financial]
+  confidential:            # cleared accounts, sees everything
+    deny: []
+  admin:                   # administrators, sees everything
+    deny: []
+  general:                 # legacy alias of `default`
+    deny: [financial]
+  finance:                 # legacy alias of `confidential`
+    deny: []
+
+# Unknown or missing roles fall back to this. Fail-closed: the denying role.
+default_role: default

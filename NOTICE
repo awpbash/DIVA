@@ -1,0 +1,56 @@
+Verbatim
+Copyright (c) 2026 Jun Wei Ng
+
+This product is licensed under the MIT License. See LICENSE for the full text.
+
+Verbatim depends on third-party software. Nothing is vendored: every dependency
+is fetched by pip or npm at install time, under its own licence. This file
+records the ones whose licences ask to be named. It is not a complete
+dependency list, which pip and npm can produce on demand:
+
+    pip install pip-licenses && pip-licenses --format=markdown
+    npm --prefix web ls --all --json
+
+
+Runtime dependencies that carry a notice requirement
+----------------------------------------------------
+
+elkjs (Eclipse Public License 2.0)
+    https://github.com/kieler/elkjs
+    The graph layout engine behind the Explore canvas. EPL-2.0 code is bundled
+    into the built frontend, so a distributed build carries it. The EPL asks
+    that recipients be told where to obtain the source, which is the URL above.
+    EPL-2.0: https://www.eclipse.org/legal/epl-2.0/
+
+caniuse-lite (CC-BY-4.0)
+    https://github.com/browserslist/caniuse-lite
+    Browser support data used at build time by the bundler. CC-BY-4.0 asks for
+    attribution, which this entry provides.
+    CC-BY-4.0: https://creativecommons.org/licenses/by/4.0/
+
+
+Everything else, in summary
+---------------------------
+
+Python: all dependencies are MIT, Apache-2.0, BSD, or MIT-CMU. No GPL or AGPL
+code is used or distributed. PDF rendering uses pypdfium2 (BSD-3-Clause and
+Apache-2.0) rather than PyMuPDF, because PyMuPDF is AGPL and cannot ship inside
+an MIT-licensed project.
+
+JavaScript: predominantly MIT, with ISC, Apache-2.0 and BSD-3-Clause packages,
+plus the two entries named above.
+
+
+Things pulled at runtime rather than distributed
+------------------------------------------------
+
+Azure Cosmos DB Emulator
+    The local development stack pulls Microsoft's emulator image from a public
+    registry. It is proprietary and governed by Microsoft's own EULA. It is not
+    redistributed here, and it is not required in production, where a real
+    Cosmos DB account takes its place.
+
+OCR model weights
+    Building the Docker image downloads ONNX weights derived from PaddleOCR
+    (Apache-2.0). They are baked into the image you build, not into this
+    repository.

@@ -1,0 +1,10 @@
+# Normalise line endings on the way into git. The tree is LF today, and this
+# keeps it that way when a contributor on Windows commits without configuring
+# core.autocrlf.
+* text=auto eol=lf
+
+# Binary, never touched.
+*.png binary
+*.jpg binary
+*.pdf binary
+*.onnx binary

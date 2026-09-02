@@ -1,0 +1,69 @@
+# Production stack. A complete file, not an overlay:
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# It is standalone on purpose. Compose merges list fields by APPENDING, so an
+# overlay cannot remove the development source mounts from the base file, and
+# the `!override` tag that can is too new to rely on. A separate file has no
+# merge semantics to get wrong, and forgetting a flag cannot silently ship you
+# a development container.
+#
+# Read docs/DEPLOYMENT.md before using this. In particular: sign-in is
+# passwordless (see SECURITY.md), so the port below binds to loopback and
+# expects a reverse proxy in front that terminates TLS and adds real
+# authentication.
+
+services:
+  app:
+    build: .
+    image: verbatim:latest
+    container_name: verbatim_app
+    restart: always
+    env_file: .env
+    environment:
+      COSMOS_URI: "${COSMOS_URI:-http://cosmos:8081}"
+      COSMOS_KEY: "${COSMOS_KEY:-}"
+      # One JSON object per line, which is what log collectors parse into
+      # queryable fields.
+      LOG_FORMAT: json
+    # No command override: the image's own CMD runs api.boot_seed, which
+    # restores an empty volume from STORAGE_SEED_URL if that is set and then
+    # execs uvicorn without --reload.
+    #
+    # No source bind mounts either. The image is the artifact. Mounting host
+    # source over it means the thing you tested is not the thing that runs.
+    volumes:
+      - ./storage:/app/storage
+    ports:
+      # Loopback only. Change this and you have published a passwordless app.
+      - "127.0.0.1:8000:8000"
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    depends_on:
+      cosmos:
+        condition: service_healthy
+
+  cosmos:
+    # The emulator is a development tool: not durable, not backed up, not
+    # supported for production. Set COSMOS_URI and COSMOS_KEY in .env to point
+    # at a real account, and this service becomes an unused idle container you
+    # can delete from this file.
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    container_name: verbatim_cosmos
+    restart: always
+    environment:
+      PROTOCOL: http
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8081/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"

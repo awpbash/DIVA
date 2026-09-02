@@ -1,0 +1,11 @@
+# Vite copies everything in this directory to the site root, unprocessed.
+#
+# It is empty, and this file keeps it tracked so it stays that way rather than
+# disappearing. The export allowlist names `web/public`, and an allowlist entry
+# that points at nothing is reported as a stale allowlist, which is noise.
+#
+# It held the in-app help guide's screenshots until those were removed: they
+# were captured on one deployment and carried its product name and its
+# counterparties into every copy of the framework. An instance that wants
+# illustrated help should capture its own and drop them here, then set `img:`
+# on the matching section in web/src/components/HelpButton.tsx.

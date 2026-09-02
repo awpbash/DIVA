@@ -1,0 +1,35 @@
+# Global pipeline defaults (v2). Doctype analyzers may override individual keys.
+# Runtime secrets (API keys, DB URIs) stay in .env / pipeline/config.py — they
+# do NOT belong here.
+
+version: 2
+
+# The domain this deployment serves. One instance, one domain: the name selects
+# the pack, ontology, analyzer, ops-view and extraction prompt as a set.
+# Override with VERBATIM_DOMAIN. This checkout ships exactly one public pack, so
+# omitting the key lets it autodetect that pack.
+
+render:
+  dpi: 300                              # page rasterization (300 de-glues body text vs 200)
+  image_format: png
+
+vision:
+  prompt: correct_and_classify          # configs/prompts/correct_and_classify.md
+  concurrency: 4                        # max parallel pages per doc
+  retries: 3
+
+# Confidence gates for load. Every fact in canonical.json is routed by its
+# adjusted confidence:
+#   value >= verified   → MERGE as :Verified
+#   tentative <= value  → MERGE with status=tentative, write to review_queue
+#   value <  tentative  → log only, do NOT write to graph
+load:
+  confidence:
+    verified: 0.85
+    tentative: 0.65
+
+# Snippet re-find tolerance: how a value is checked against the clause it
+# claims to come from. Levenshtein-tolerant, so OCR noise does not break it.
+snippet:
+  max_edit_ratio: 0.15                  # <=15% edits relative to snippet length
+  case_sensitive: false

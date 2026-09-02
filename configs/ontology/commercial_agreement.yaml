@@ -1,0 +1,325 @@
+# =============================================================================
+# Ontology: commercial_agreement.
+#
+# The declared knowledge-graph schema for real EDGAR-style commercial contracts
+# (CUAD): NDAs, licence, supply and distribution agreements, and amendments.
+#
+# It is deliberately compact but structurally broad: fewer fact labels, no
+# equipment or measurement tier, a party-role vocabulary for commercial
+# agreements, and a jurisdiction hub.
+#
+# Property lists are documentation, validated lightly (key + doc_id).
+# =============================================================================
+
+doctype: commercial_agreement
+version: 1
+
+layers:
+  document:   [Document, Agreement]
+  layout:     [Section, Block]
+  fact:       [Party, Location, Payment, Date, Obligation, Right, Warranty,
+               Condition, Event, DefinedTerm, Reference, Schedule]
+  provenance: [FactMention]
+  evidence:   [EvidenceSpan]
+  identity:   [CanonicalParty, CanonicalJurisdiction, CanonicalTerm]
+  quarantine: [Proposal]
+
+node_types:
+  Document:
+    key: doc_id
+    description: One ingested PDF. doc_id = sha256(pdf)[:16].
+    properties: [doc_id, doctype, analyzer_id, total_pages, n_facts, extraction_version]
+  Agreement:
+    key: agreement_id
+    description: The contract inside a document (currently 1:1 with Document).
+    properties: [agreement_id, doc_id, agreement_type, title,
+                 document_date, effective_date, end_date]
+  Section:
+    key: section_id
+    description: Numbered heading-delimited region of the document.
+    properties: [section_id, doc_id, section_num, title, kind, order,
+                 page_start, page_end, bbox_x0, bbox_y0, bbox_x1, bbox_y1,
+                 embed_text, embedding]
+  Block:
+    key: block_id
+    description: Physical layout block (paragraph / table / heading) with page geometry.
+    properties: [block_id, doc_id, page_no, kind, text, section_path,
+                 bbox_x0, bbox_y0, bbox_x1, bbox_y1, grid_json,
+                 embed_text, embedding]
+  EvidenceSpan:
+    key: evidence_id
+    description: Citation atom — verbatim snippet + page geometry backing a fact.
+    properties: [evidence_id, doc_id, agreement_id, raw_fact_id, page_no,
+                 section_id, text_span, snippet_ok, evidence_type, block_ids,
+                 bbox_x0, bbox_y0, bbox_x1, bbox_y1, rects_json, row_context,
+                 embed_text, embedding]
+  FactMention:
+    key: mention_id
+    description: Provenance floor — the raw harvested span before categorise/normalise.
+    properties: [mention_id, doc_id, agreement_id, raw_fact_id, raw_label,
+                 page_no, section_id, text_span, block_ids, surfaced,
+                 bbox_x0, bbox_y0, bbox_x1, bbox_y1, rects_json]
+  Proposal:
+    key: proposal_id
+    description: Quarantine for unknown categories and sub-threshold relations.
+    properties: [proposal_id, doc_id, kind, category, reason, payload_json,
+                 status, relation, source_node_id, target_node_id,
+                 source_label, target_label, confidence, rationale, evidence_id]
+
+  # ----- fact tier --------------------------------------------------------
+  Party:
+    key: party_id
+    description: An organization or individual named in the agreement.
+    properties: [party_id, doc_id, agreement_id, name, normalized_name, role,
+                 entity_type, address, jurisdiction_of_incorporation, title,
+                 confidence]
+  Location:
+    key: location_id
+    description: A governing-law jurisdiction, a venue, or a notice address.
+    properties: [location_id, doc_id, agreement_id, name, normalized_jurisdiction,
+                 location_type, role, address, confidence]
+  Payment:
+    key: payment_id
+    description: A stated monetary amount — fee, cap, or minimum commitment.
+    properties: [payment_id, doc_id, agreement_id, name, payment_type, amount,
+                 currency, payer_role, payment_frequency, normalized_parameter,
+                 bound, confidence]
+  Date:
+    key: date_id
+    description: An absolute, relative, or named contractual date.
+    properties: [date_id, doc_id, agreement_id, date_type, type, date_text,
+                 date_value, anchor, offset, unit, confidence]
+  Obligation:
+    key: obligation_id
+    description: A duty a party must perform.
+    properties: [obligation_id, doc_id, agreement_id, action, canonical_action,
+                 actor_role, actor_party, modality, object, recipient_role,
+                 deadline_text, confidence]
+  Right:
+    key: right_id
+    description: An entitlement, permission, or remedy a party holds.
+    properties: [right_id, doc_id, agreement_id, action, canonical_action,
+                 holder_role, modality, object, trigger_text, confidence]
+  Warranty:
+    key: warranty_id
+    description: An assertion of present fact whose falsity is itself a breach.
+    properties: [warranty_id, doc_id, agreement_id, action, canonical_action,
+                 warrantor_role, assertion, disclaimed, confidence]
+  Condition:
+    key: condition_id
+    description: A condition precedent, exception, limitation, or carve-out.
+    properties: [condition_id, doc_id, agreement_id, condition_text,
+                 condition_type, role, confidence]
+  Event:
+    key: event_id
+    description: A contractual event — breach, insolvency, change of control.
+    properties: [event_id, doc_id, agreement_id, event_type, description,
+                 role, confidence]
+  DefinedTerm:
+    key: term_id
+    description: A capitalised term the agreement defines, plus its definition.
+    properties: [term_id, doc_id, agreement_id, term, normalized_term,
+                 definition, confidence]
+  Reference:
+    key: reference_id
+    description: A cross-reference to another section, exhibit, or document.
+    properties: [reference_id, doc_id, agreement_id, target_text, reference_kind,
+                 role, confidence]
+  Schedule:
+    key: schedule_id
+    description: A schedule, exhibit, or annex attached to the agreement.
+    properties: [schedule_id, doc_id, agreement_id, schedule_num, title,
+                 role, confidence]
+
+  # ----- identity tier ----------------------------------------------------
+  CanonicalParty:
+    key: canonical_party_id
+    description: Cross-document identity hub for a party.
+    properties: [canonical_party_id, normalized_name, display_name, roles]
+  CanonicalJurisdiction:
+    key: canonical_jurisdiction_id
+    description: Cross-document identity hub for a governing-law jurisdiction.
+    properties: [canonical_jurisdiction_id, normalized_jurisdiction, display_name]
+  CanonicalTerm:
+    key: canonical_term_id
+    description: Cross-document identity hub for a defined term.
+    properties: [canonical_term_id, normalized_term, display_term]
+
+relationships:
+  CONTAINS_AGREEMENT: {from: [Document],  to: [Agreement],  provenance: loader}
+  HAS_SECTION:        {from: [Agreement], to: [Section],    provenance: loader}
+  HAS_BLOCK:          {from: [Section],   to: [Block],      provenance: loader}
+  NEXT:               {from: [Block],     to: [Block],      provenance: loader}
+  HAS_FACT:           {from: [Agreement], to: [Party, Location, Payment, Date,
+                                               Obligation, Right, Warranty, Condition,
+                                               Event, DefinedTerm, Reference, Schedule],
+                       provenance: loader}
+  SUPPORTED_BY:       {from: [Party, Location, Payment, Date, Obligation, Right,
+                              Warranty, Condition, Event, DefinedTerm, Reference,
+                              Schedule],
+                       to: [EvidenceSpan], provenance: loader}
+  HAS_MENTION:        {from: [Party, Location, Payment, Date, Obligation, Right,
+                              Warranty, Condition, Event, DefinedTerm, Reference,
+                              Schedule],
+                       to: [FactMention], provenance: loader}
+  CITES_BLOCK:        {from: [EvidenceSpan, FactMention], to: [Block], provenance: loader}
+  IN_SECTION:         {from: [EvidenceSpan], to: [Section], provenance: loader}
+  REFERENCES_SECTION: {from: [EvidenceSpan], to: [Section], provenance: 'derived:text_match'}
+  HAS_PROPOSAL:       {from: [Document], to: [Proposal], provenance: loader}
+
+  CONDITIONED_ON:     {from: [Obligation, Right, Payment], to: [Condition],
+                       provenance: 'derived:in_graph'}
+  TRIGGERED_BY:       {from: [Obligation, Right, Payment], to: [Event],
+                       provenance: 'derived:in_graph'}
+  IMPOSED_ON:         {from: [Obligation], to: [Party], provenance: 'derived:in_graph'}
+  HELD_BY:            {from: [Right], to: [Party], provenance: 'derived:in_graph'}
+  WARRANTED_BY:       {from: [Warranty], to: [Party], provenance: 'derived:in_graph'}
+  PAYABLE_BY:         {from: [Payment], to: [Party], provenance: 'derived:in_graph'}
+  GOVERNED_BY:        {from: [Obligation, Right, Condition], to: [Location],
+                       provenance: 'derived:in_graph'}
+  USES_TERM:          {from: [Party, Location, Payment, Date, Obligation, Right,
+                              Warranty, Condition, Event, Reference, Schedule],
+                       to: [DefinedTerm], provenance: 'derived:text_match'}
+  REFERENCES_SCHEDULE: {from: [Party, Location, Payment, Date, Obligation, Right,
+                               Warranty, Condition, Event, DefinedTerm, Reference],
+                        to: [Schedule], provenance: 'derived:text_match'}
+  RESOLVES_TO:
+    from: [Party, Location, DefinedTerm]
+    to:   [CanonicalParty, CanonicalJurisdiction, CanonicalTerm]
+    provenance: 'derived:in_graph'
+    pairs:
+      - [Party, CanonicalParty]
+      - [Location, CanonicalJurisdiction]
+      - [DefinedTerm, CanonicalTerm]
+
+  LIMITED_BY:  {from: [Obligation, Right, Payment], to: [Condition], provenance: asserted_llm}
+  EXCEPTION_TO: {from: [Obligation, Right, Payment], to: [Condition], provenance: asserted_llm}
+  SURVIVES:    {from: [Obligation], to: [Event], provenance: asserted_llm}
+
+extraction:
+  dropped_raw_labels: ["identifier", "other", "unknown", ""]
+  categories:
+    organization:
+      label: Party
+      raw_labels: [name-or-org, name_or_org, organization, company]
+      shape_doc: '{"name": "<full legal name>", "jurisdiction_of_incorporation": "<state/country or null>", "notice_address": "<address or null>"}'
+      bundling_rule: Bundle stubs that refer to the SAME organization across pages (legal name, state of incorporation, and the notice block). Different organizations stay separate.
+    person:
+      label: Party
+      raw_labels: [person, individual, signatory]
+      shape_doc: '{"name": "<full name>", "title": "<job title or null>"}'
+      bundling_rule: Bundle mentions of the same individual. Role labels such as 'the Disclosing Party' are NOT people — those are organizations.
+    place:
+      label: Location
+      raw_labels: [place, location, address, jurisdiction]
+      shape_doc: '{"name": "<verbatim place or jurisdiction>", "kind": "<governing_law|venue|notice_address>"}'
+      bundling_rule: Each distinct named place = one fact. The governing-law state and the venue court stay separate even when they name the same state.
+    money:
+      label: Payment
+      raw_labels: [money, money-or-rate, money_or_rate, fee]
+      shape_doc: '{"amount": <number>, "currency": "<symbol like USD|EUR or null>", "normalized_parameter": "<canonical snake_case name, e.g. license_fee|liability_cap|minimum_commitment>", "bound": "<minimum|maximum|target|exact>"}'
+      bundling_rule: Each specific amount = one payment fact. Identical amounts across pages merge. A clause stating both a floor and a cap yields TWO facts.
+    date:
+      label: Date
+      raw_labels: [date]
+      shape_doc: 'Absolute: {"type":"absolute","iso":"YYYY-MM-DD"}. Relative: {"type":"relative","offset":<n>,"unit":"days|months|years","anchor":"<verbatim anchor>"}. Named: {"type":"named","anchor":"<verbatim phrase>"}.'
+      bundling_rule: Same date merges. Agreement date, effective date and expiration date stay separate facts.
+    obligation:
+      label: Obligation
+      raw_labels: [obligation]
+      shape_doc: '{"subject_role":"disclosing_party|receiving_party|licensor|licensee|both|other","modal":"shall|must|will","canonical_action":"<snake_case verb_phrase>","object":"<what is acted on>","deadline":"<verbatim deadline or null>"}'
+      bundling_rule: Each distinct shall-clause = one obligation. Reuse canonical_action for semantically identical duties.
+    right:
+      label: Right
+      raw_labels: [right, entitlement]
+      shape_doc: '{"holder_role":"disclosing_party|receiving_party|licensor|licensee|both|other","modal":"may|is entitled to","canonical_action":"<snake_case verb_phrase>","object":"<what the right is over>"}'
+      bundling_rule: Each distinct entitlement = one right. Termination for convenience and termination for cause stay separate.
+    condition:
+      label: Condition
+      raw_labels: [condition, limitation, carve_out]
+      shape_doc: '{"text": "<verbatim condition clause>", "condition_type": "<precedent|exception|limitation|carve_out>"}'
+      bundling_rule: Each distinct condition = one fact. A clause carrying two independent provisos yields two facts.
+    event:
+      label: Event
+      raw_labels: [event]
+      shape_doc: '{"event_type": "<breach|insolvency|change_of_control|force_majeure|expiry>", "description": "<verbatim description>"}'
+      bundling_rule: Each named contractual event = one fact.
+    defined_term:
+      label: DefinedTerm
+      raw_labels: [defined_term, definition]
+      shape_doc: '{"term": "<the capitalised defined term>", "definition": "<verbatim definition text>"}'
+      bundling_rule: One fact per defined term. A term redefined in an amendment is a separate fact on that document.
+    warranty:
+      label: Warranty
+      raw_labels: [warranty, representation]
+      shape_doc: '{"warrantor_role":"disclosing_party|receiving_party|licensor|licensee|both|other","assertion":"<verbatim warranted statement>","canonical_action":"<snake_case e.g. warrants_ownership>","disclaimed":<true|false>}'
+      bundling_rule: Each distinct warranted statement = one fact. An express warranty and its disclaimer stay separate facts.
+    reference:
+      label: Reference
+      raw_labels: [reference, cross_reference]
+      shape_doc: '{"target": "<verbatim reference text e.g. Section 4.2 or Exhibit A>", "kind": "<internal|external>"}'
+      bundling_rule: Each distinct referenced target = one fact.
+    schedule:
+      label: Schedule
+      raw_labels: [schedule, exhibit, annex]
+      shape_doc: '{"label": "<verbatim label e.g. Exhibit A or Schedule 1>", "title": "<schedule title or null>"}'
+      bundling_rule: One fact per schedule or exhibit.
+
+identity:
+  canonical_roles: [disclosing_party, receiving_party, licensor, licensee]
+  legal_suffixes: [inc, incorporated, corp, corporation, co, llc, llp, lp,
+                   ltd, limited, plc, gmbh, sa, nv, bv, pte]
+  # Words this domain uses so often that they identify nothing. The retrieval
+  # scoper drops them before matching a question against entity names. A
+  # stopword set is domain vocabulary, which is exactly why it cannot live in
+  # the engine.
+  generic_tokens:
+    - confidential
+    - confidentiality
+    - disclosure
+    - disclosing
+    - receiving
+    - licence
+    - license
+    - licensor
+    - licensee
+    - party
+    - parties
+    - term
+    - terms
+    - payment
+    - payments
+    - fee
+    - fees
+    - invoice
+    - warranty
+    - indemnity
+    - liability
+    - governing
+    - jurisdiction
+    - amendment
+    - assignment
+    - restriction
+    - restrictions
+    - obligation
+    - obligations
+    - right
+    - rights
+
+relation_proposals:
+  relations:
+    LIMITED_BY:
+      from: [Obligation, Right, Payment]
+      to:   [Condition]
+      description: The source fact is narrowed, capped, or limited by the condition.
+      min_confidence: 0.75
+    EXCEPTION_TO:
+      from: [Obligation, Right, Payment]
+      to:   [Condition]
+      description: The condition states an exception or carve-out to the source fact.
+      min_confidence: 0.75
+    SURVIVES:
+      from: [Obligation]
+      to:   [Event]
+      description: The obligation continues to bind after the event, typically expiry or termination.
+      min_confidence: 0.80

@@ -1,0 +1,95 @@
+# Commercial agreement analyzer: the public worked example.
+#
+# Modelled on real EDGAR commercial contracts (the CUAD corpus): NDAs, license
+# agreements, supply and distribution agreements, and their amendments.
+#
+# It is deliberately compact but structurally broad, so the optional parts of
+# the engine are exercised without needing a private domain:
+#
+#   1. No equipment, no rates, no technical measurements. The whole
+#      measurement/equipment half of the engine must be genuinely optional.
+#   2. Different party roles: disclosing/receiving and licensor/licensee.
+#   3. Different money semantics. A commercial agreement states fees, caps and
+#      minimum commitments, not per-RT-hour consumption rates.
+
+id: commercial_agreement
+version: 1.0
+extends: _universal
+
+classify_when:
+  any:
+    - "doctype matches '(non[- _]?disclosure|confidentiality)[ _]agreement'"
+    - "doctype matches '(license|licence|distribution|supply|reseller)[ _]agreement'"
+    - "doctype matches '(amendment|amended and restated)'"
+    - "title contains 'Non-Disclosure Agreement'"
+    - "title contains 'License Agreement'"
+
+# A narrowed set. equipment / measurement / rate / formula / cost_category are
+# absent on purpose: this domain has no physical plant and no per-unit tariffs.
+categories:
+  - organization
+  - person
+  - place
+  - money
+  - date
+  - obligation
+  - right
+  - condition
+  - event
+  - defined_term
+  - reference
+  - schedule
+  # NOT in the universal set, and the point of it. A warranty is an assertion of
+  # present fact whose falsity is itself the breach, which makes it structurally
+  # distinct from an obligation (a duty to act), a right (an entitlement) and a
+  # condition (a qualifier). A domain naming its own concepts is the ordinary
+  # case; the analyzer schema now takes any snake_case category, and the binding
+  # check is that this list matches the ontology's exactly.
+  - warranty
+
+# Role vocabulary for the public example domain.
+roles:
+  organization:
+    - disclosing_party
+    - receiving_party
+    - licensor
+    - licensee
+    - indemnifying_party
+    - indemnified_party
+    - assignor
+    - assignee
+  person:
+    - signatory
+    - notice_recipient
+  place:
+    - governing_law
+    - venue
+    - notice_address
+  money:
+    - license_fee
+    - minimum_commitment
+    - liability_cap
+    - termination_fee
+  date:
+    - agreement_date
+    - effective_date
+    - expiration_date
+    - renewal_notice_date
+  obligation:
+    - confidentiality
+    - payment
+    - reporting
+    - indemnity
+  right:
+    - termination_for_convenience
+    - audit
+    - assignment
+    - renewal
+
+confidence_thresholds:
+  verified: 0.80
+  tentative: 0.60
+
+notes: |
+  Minimal but structurally complete. Grow it only when a real extraction need
+  appears, not to reach parity with another domain.

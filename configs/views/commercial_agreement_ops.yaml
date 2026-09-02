@@ -1,0 +1,304 @@
+# =============================================================================
+# COMMERCIAL AGREEMENT OPS-VIEW
+#
+# A derived view over the `commercial_agreement` pack. Around twenty fields,
+# minimal on purpose, but exercising every source mechanism the domain can
+# reach: recital, party, value, enum, presence_enum, free_text, llm, external.
+#
+# One mechanism is deliberately NOT used, and its absence is part of the test:
+#   * `equipment`  — this domain declares no Equipment label.
+# It must therefore be optional rather than assumed by the compiler.
+#
+# The view path is derived from the doctype rather than a module constant, and
+# the `party` mechanism validates against roles this domain's own analyzer
+# declares rather than a hardcoded party-role set.
+# =============================================================================
+view: commercial_agreement_ops
+extends_pack: commercial_agreement
+version: 1
+
+# Closed enums. Values are QUOTED: bare Yes/No parse as YAML booleans.
+enums:
+  yes_no: ["Yes", "No", "Not Stated"]
+  document_kind: ["Base Agreement", "Amendment", "Amended and Restated",
+                  "Assignment", "Not Stated"]
+  obligated_party: ["Disclosing Party", "Receiving Party", "Licensor",
+                    "Licensee", "Both", "Not Stated"]
+
+sensitivity:
+  default_level: general
+  categories:
+    commercial_terms: confidential      # monetary
+    parties:          confidential      # counterparty identity
+  field_overrides:
+    parties.signatory_name: general     # appears on the public execution page
+
+# =============================================================================
+# DOCUMENT FAMILY POLICY. The vocabulary below is domain data; this is what
+# proves the supersedence walk reads its rules rather than knowing them.
+# =============================================================================
+document_family:
+  # What an uploader may declare a document to BE. This is the menu the upload
+  # form offers, and the only values the intake validator accepts. Domain
+  # vocabulary: name what your corpus actually contains.
+  document_types:
+    - Agreement
+    - Amendment
+    - Amended and Restated
+    - Assignment
+    - Side Letter
+    - Notice
+    - Other
+  # This domain declares the relationship by what it CALLS the document, so the
+  # words below are document types rather than a separate relationship field.
+  relations:
+    amendment: AMENDS
+    amended and restated: SUPERSEDES
+    assignment: NOVATES
+  # Which of THIS domain's document_relationships fields plays each structural
+  # role in the chain walk. Required whenever the names differ from the engine
+  # defaults, which they do here: an unmapped role reads a field that does not
+  # exist and the whole amendment chain silently orders on nothing.
+  # `relationship_type` maps to document_type because that is where this domain
+  # states the relationship, matching the `relations:` keys above.
+  field_roles:
+    document_type: document_type
+    ordinal: amendment_ordinal
+    relationship_type: document_type
+    document_date: agreement_date
+    amends_dated: amends_document
+    effective_date: effective_date
+  ancillary_types:
+    - exhibit
+    - side letter
+    - ancillary
+
+categories:
+
+  # ---------------------------------------------------------------------------
+  # Document family / supersedence. DECLARED in the recitals: the amendment
+  # chain is read, never inferred.
+  document_relationships:
+    title: Document Relationships
+    supersedes: false      # facts about THIS document, not evolving terms
+    fields:
+      document_type:
+        title: Document Type
+        type: enum
+        multiplicity: 1
+        hint: "What kind of document this is, read from the title and opening clause."
+        values_ref: document_kind
+        source: {mechanism: recital}
+      amendment_ordinal:
+        title: Amendment Ordinal
+        type: text
+        multiplicity: 1
+        hint: "One word only: First / Second / Third, or 'None' if this is the base agreement. Not a sentence."
+        source: {mechanism: recital}
+      amends_document:
+        title: Amends Document
+        type: text
+        multiplicity: 1
+        hint: "The earlier agreement this document varies, as named in the recitals (title and date)."
+        source: {mechanism: recital}
+      agreement_date:
+        title: Agreement Date
+        type: text
+        multiplicity: 1
+        hint: "The date the agreement is dated, from the opening clause."
+        source: {mechanism: recital}
+      effective_date:
+        title: Effective Date
+        type: text
+        multiplicity: 1
+        hint: "The date the agreement takes effect, if stated separately from the agreement date."
+        source: {mechanism: recital}
+
+  # ---------------------------------------------------------------------------
+  parties:
+    title: Parties
+    supersedes: false      # counterparty identity, not an evolving term
+    fields:
+      disclosing_party_name:
+        title: Disclosing Party
+        type: text
+        multiplicity: 1
+        hint: "The party that discloses confidential information, from the recitals or signature block."
+        source: {mechanism: party, role: disclosing_party}
+      receiving_party_name:
+        title: Receiving Party
+        type: text
+        multiplicity: 1
+        hint: "The party that receives confidential information, from the recitals or signature block."
+        source: {mechanism: party, role: receiving_party}
+      signatory_name:
+        title: Signatory
+        type: text
+        multiplicity: 2
+        hint: "The individuals who executed the agreement, from the signature block."
+        source: {mechanism: party, role: signatory}
+
+  # ---------------------------------------------------------------------------
+  commercial_terms:
+    title: Commercial Terms
+    fields:
+      license_fee:
+        title: Licence Fee
+        type: value
+        multiplicity: 1
+        hint: "The recurring fee payable for the licence or subscription, as a money amount with its currency."
+        source:
+          mechanism: value
+          label: Payment
+          match: {parameter_any: [license_fee, licence_fee, subscription_fee]}
+      minimum_commitment:
+        title: Minimum Commitment
+        type: value
+        multiplicity: 1
+        hint: "The total money the customer commits to spend over the term, with its currency. A money amount, never a duration, and never the recurring fee."
+        source:
+          mechanism: value
+          label: Payment
+          match: {parameter_any: [minimum_commitment, minimum_purchase]}
+      liability_cap:
+        title: Cap on Liability
+        type: value
+        multiplicity: 1
+        hint: "The ceiling on aggregate liability, as a money amount with its currency."
+        source:
+          mechanism: value
+          label: Payment
+          match: {parameter_any: [liability_cap, aggregate_liability_cap]}
+
+  # ---------------------------------------------------------------------------
+  governing_law:
+    title: Governing Law
+    fields:
+      governing_law:
+        title: Governing Law
+        type: free_text
+        multiplicity: 1
+        hint: "The law that governs the agreement, verbatim from the governing-law clause."
+        source:
+          mechanism: free_text
+          labels: [Location]
+          match: {keywords: ["governed by", "governing law", "laws of"]}
+      venue:
+        title: Venue
+        type: free_text
+        multiplicity: 1
+        hint: "Where disputes are heard, verbatim from the jurisdiction or venue clause. A court or arbitral seat. The governing-law clause alone does not state a venue."
+        source:
+          mechanism: free_text
+          labels: [Location]
+          match: {keywords: ["exclusive jurisdiction", "venue", "courts of"]}
+
+  # ---------------------------------------------------------------------------
+  obligations:
+    title: Obligations
+    fields:
+      confidentiality_obligation:
+        title: Confidentiality Obligation On
+        type: enum
+        multiplicity: 1
+        hint: "Which party carries the confidentiality duty."
+        values_ref: obligated_party
+        source:
+          mechanism: enum
+          label: Obligation
+          role_field: actor_role
+          match: {action_prefix: [maintain_confidential, keep_confidential, protect_confidential]}
+          role_map:
+            disclosing_party: "Disclosing Party"
+            receiving_party: "Receiving Party"
+            licensor: "Licensor"
+            licensee: "Licensee"
+            both: "Both"
+      payment_obligation:
+        title: Payment Obligation On
+        type: enum
+        multiplicity: 1
+        hint: "Which party owes payment, where this document itself says who pays."
+        values_ref: obligated_party
+        source:
+          mechanism: enum
+          label: Obligation
+          role_field: actor_role
+          match: {action_prefix: [pay, remit, reimburse]}
+          role_map:
+            licensee: "Licensee"
+            licensor: "Licensor"
+            receiving_party: "Receiving Party"
+            both: "Both"
+
+  # ---------------------------------------------------------------------------
+  rights:
+    title: Rights
+    fields:
+      termination_for_convenience:
+        title: Termination for Convenience
+        type: presence_enum
+        multiplicity: 1
+        hint: "Whether either party may terminate without cause on notice."
+        values_ref: yes_no
+        source:
+          mechanism: presence_enum
+          labels: [Right]
+          match: {keywords: ["for convenience", "without cause", "upon written notice"]}
+      audit_right:
+        title: Audit Right
+        type: presence_enum
+        multiplicity: 1
+        hint: "Whether a party may audit the other's records."
+        values_ref: yes_no
+        source:
+          mechanism: presence_enum
+          labels: [Right]
+          match: {keywords: ["audit", "inspect the records", "books and records"]}
+      renewal_right:
+        title: Renewal Right
+        type: presence_enum
+        multiplicity: 1
+        hint: "Whether the agreement automatically renews or may be renewed."
+        values_ref: yes_no
+        source:
+          mechanism: presence_enum
+          labels: [Right]
+          match: {keywords: ["automatically renew", "renewal term", "extend the term"]}
+
+  # ---------------------------------------------------------------------------
+  term:
+    title: Term
+    fields:
+      initial_term:
+        title: Initial Term
+        type: free_text
+        multiplicity: 1
+        hint: "How long the agreement runs before renewal, as a length of time."
+        source:
+          mechanism: free_text
+          labels: [Date, Condition]
+          match: {keywords: ["initial term", "term of this agreement", "shall continue for"]}
+      renewal_term:
+        title: Renewal Term
+        type: text
+        multiplicity: 1
+        hint: "The length of ONE renewal period, as a length of time. Not the initial term."
+        source: {mechanism: llm}
+      survival_period:
+        title: Survival Period
+        type: text
+        multiplicity: 1
+        hint: "How long obligations continue after termination, as a length of time."
+        source: {mechanism: llm}
+
+  # ---------------------------------------------------------------------------
+  admin:
+    title: Administration
+    fields:
+      internal_matter_number:
+        title: Internal Matter Number
+        type: reference
+        multiplicity: 1
+        hint: "Operational metadata held in the matter-management system, not in the contract body."
+        source: {mechanism: external}

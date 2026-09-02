@@ -1,0 +1,172 @@
+# =============================================================================
+# BASE PACK  (_base.yaml)  — the DOCTYPE-INVARIANT engine
+#
+# Every doctype pack inherits this via `extends: _base`. It declares the
+# skeleton that does NOT change per doctype: the dual-label fact model, the
+# layout/retrieval/evidence node tiers, the structural edges, the edge trust
+# model, and the retrieval engine config.
+#
+# A new doctype writes ONLY its own fact_types / edges.derived / assertable /
+# identity.hubs / aggregation — it never restates anything in this file. The
+# pack compiler (pipeline/extraction/pack.py) deep-merges this under the
+# doctype pack (doctype keys win) before validating.
+#
+# NOTE (KB rebuild): the SemanticUnit retrieval tier was REMOVED. It was an
+# LLM-narrated layer that went stale on every re-extraction and only served
+# (a) coarse recall — now Section/Block vectors + typed lookups — and (b) a
+# `same_unit` derivation recall net — now the deterministic `same_section`
+# tier (Section co-location, never stale, no LLM).
+# =============================================================================
+
+# ── the dual-label model ──────────────────────────────────────────────
+# Every extracted fact node carries TWO labels:
+#   :Fact     — generic spine; all doctype-agnostic machinery keys on this
+#               (evidence anchoring, citation, vector recall, cross-doc
+#               aggregation). Carries the shared props below.
+#   :<Type>   — specific leaf, generated from fact_types[*].label; gives
+#               indexed, exact, typed lookup. Carries the type props.
+# One node, both labels: MATCH (f:Fact) and MATCH (o:Obligation) both find it.
+structural:
+  fact_node:
+    shared_label: Fact
+    shared_properties:        # present on EVERY fact, every doctype
+      - fact_id               # stable id, minted per-doc at load
+      - doc_id                # provenance: stamped, never inferred
+      - agreement_id
+      - type                  # string discriminator, mirrors the :Type label
+      - confidence
+      - embedding             # generic :Fact vector recall
+    shared_index: [doc_id, type]
+    vector_index: {name: fact_embedding, on: embedding}
+
+  node_types:
+    Document:
+      key: doc_id
+      ui_group: document
+      properties: [doc_id, doctype, group, version, status, effective_date,
+                   analyzer_id, total_pages, n_facts, extraction_version]
+    Agreement:
+      key: agreement_id
+      ui_group: document
+      properties: [agreement_id, doc_id, agreement_type, title,
+                   document_date, effective_date, end_date, status]
+    Section:
+      key: section_id
+      ui_group: section
+      properties: [section_id, doc_id, section_num, title, kind, order,
+                   page_start, page_end, bbox_x0, bbox_y0, bbox_x1, bbox_y1,
+                   embed_text, embedding]
+      vector_index: {name: section_embedding, on: embedding}
+    Block:
+      key: block_id
+      ui_group: section
+      properties: [block_id, doc_id, page_no, kind, text, section_path,
+                   bbox_x0, bbox_y0, bbox_x1, bbox_y1, grid_json,
+                   embed_text, embedding]
+      vector_index: {name: block_embedding, on: embedding}
+    EvidenceSpan:
+      key: evidence_id
+      ui_group: evidence
+      description: Citation atom — verbatim snippet + page geometry. The
+        immutable join between pixels and meaning. Every fact ends here.
+      properties: [evidence_id, doc_id, agreement_id, raw_fact_id, page_no,
+                   section_id, text_span, snippet_ok, evidence_type, block_ids,
+                   bbox_x0, bbox_y0, bbox_x1, bbox_y1, rects_json, row_context,
+                   embed_text, embedding]
+      vector_index: {name: evidence_embedding, on: embedding}
+    FactMention:
+      key: mention_id
+      ui_group: evidence
+      description: Provenance floor — the raw harvested span BEFORE
+        categorise/normalise. Orphans (surfaced=false) stay retrievable.
+      properties: [mention_id, doc_id, agreement_id, raw_fact_id, raw_label,
+                   page_no, section_id, text_span, block_ids, surfaced,
+                   bbox_x0, bbox_y0, bbox_x1, bbox_y1, rects_json]
+    Proposal:
+      key: proposal_id
+      ui_group: proposal
+      description: Quarantine — unknown category, invalid output, or a
+        candidate relation below the auto-insert bar. Excluded from reasoning
+        until a human promotes it.
+      properties: [proposal_id, doc_id, kind, category, reason, payload_json,
+                   status, relation, source_node_id, target_node_id,
+                   source_label, target_label, confidence, rationale,
+                   evidence_id]
+    DocAsset:
+      key: asset_id
+      ui_group: document
+      description: A page-level visual asset (a schematic / drawing / figure
+        page), detected deterministically from the OCR layout — figure blocks
+        covering most of the page. Lets retrieval point a user at "the plant
+        schematic on page 18" even though the page carries no prose.
+      properties: [asset_id, doc_id, page_no, title, kind]
+
+  # ── how the graph explorer colours and groups what it draws ──────────
+  # The legend is served from here (GET /graph/legend), not written into the
+  # frontend. It used to be a hand-copied list of ONE domain's labels, so a
+  # domain with different fact types drew them all in the "unclassified" grey
+  # while the legend advertised labels that did not exist.
+  #
+  # Two groups are filled from the doctype pack rather than named here, since
+  # they are exactly what varies: every `fact_types[*].label` joins `fact`, and
+  # every `identity.hubs` name joins `identity`. Everything above declares its
+  # own `ui_group`. Order below is display order.
+  # Quote the strings: these are FLOW mappings, so an unquoted comma inside a
+  # value ends the entry and silently truncates it.
+  ui_groups:
+    - {key: document, label: "Document",         hint: "the document spine"}
+    - {key: section,  label: "Section",          hint: "clause structure"}
+    - {key: fact,     label: "Fact",             hint: "extracted facts"}
+    - {key: identity, label: "Canonical entity", hint: "one entity, shared across documents"}
+    - {key: evidence, label: "Evidence",         hint: "the snippet behind a value"}
+    - {key: proposal, label: "Proposal",         hint: "unverified, awaiting review"}
+
+  # structural edges (loader, mechanical). HAS_FACT/SUPPORTED_BY/HAS_MENTION
+  # point at the GENERIC :Fact label — the enumeration of 15 typed labels is
+  # exactly what the dual-label model removes. Typed attachment is recovered
+  # for free because every :Fact also carries its :Type label.
+  edges:
+    CONTAINS_AGREEMENT: {from: [Document],     to: [Agreement]}
+    HAS_SECTION:        {from: [Agreement],    to: [Section]}
+    HAS_BLOCK:          {from: [Section],      to: [Block]}
+    NEXT:               {from: [Block],        to: [Block]}
+    HAS_FACT:           {from: [Agreement],    to: [Fact]}
+    SUPPORTED_BY:       {from: [Fact],         to: [EvidenceSpan]}
+    HAS_MENTION:        {from: [Fact],         to: [FactMention]}
+    CITES_BLOCK:        {from: [EvidenceSpan, FactMention], to: [Block]}
+    IN_SECTION:         {from: [EvidenceSpan], to: [Section]}
+    REFERENCES_SECTION: {from: [EvidenceSpan], to: [Section],
+                         edge_properties: [reference_text]}
+    HAS_PROPOSAL:       {from: [Document],     to: [Proposal]}
+    HAS_ASSET:          {from: [Document],     to: [DocAsset]}
+
+# ── edge trust model ──────────────────────────────────────────────────
+# Every edge carries one of these tiers. Retrieval + synth read it to know
+# how much to trust an edge and how to cite it.
+provenance_tiers:
+  derived:
+    trust: high
+    in_reasoning: true
+    explain_by: [layout, role, text]     # pointable: paragraph / role / reference
+  asserted_llm:
+    trust: medium
+    in_reasoning: true
+    cite: asserting_span                 # citation surfaces the span the LLM used
+    recheck: answer_time                 # faithfulness gate re-verifies on use
+  proposed:
+    trust: review
+    in_reasoning: false                  # invisible until a human promotes it
+
+# ── retrieval engine config (parameterises the tools) ─────────────────
+# Coarse recall is Section/Block vector + typed lookups (no SemanticUnit tier).
+retrieval:
+  generic_fact_label: Fact          # cross-doc / "find anything about X" recall
+  vector_indexes: [fact_embedding, evidence_embedding, section_embedding,
+                   block_embedding]
+  coarse_tier: Section              # retrieve coarse (Section/Block), cite fine
+  cite_tier: EvidenceSpan
+  provenance_floor: FactMention     # orphan-fragment last-resort recall
+  faithfulness_gate:
+    enabled: true
+    method: span_entailment         # each answer clause must be entailed by a cited span
+    on_fail: not_in_documents       # unsupported → "not in the documents"

@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest something the project should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: >
+        Describe the problem, not the solution. What does your corpus look like,
+        and what do you need out of it that you cannot get today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What you tried
+      description: >
+        Config often gets further than people expect. A new document type is
+        four YAML files and no Python, so it helps to know where that ran out.
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+      description: Optional. A sketch of the change, if you have one.
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: >
+            This does not require per-document special-case logic (a fix that
+            works for one file is not a fix this project can take).
+        - label: >
+            This does not weaken the rule that every answer traces to evidence
+            in the source document.

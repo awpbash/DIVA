@@ -1,0 +1,60 @@
+[project]
+name = "verbatim"
+version = "0.3.0"          # keep in step with api/__init__.py (tests/test_version.py)
+description = "Schema-first document extraction with human verification and evidence-anchored retrieval."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+keywords = ["rag", "document-extraction", "knowledge-graph", "ocr", "provenance"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+# Runtime dependencies live in requirements.txt. This project is run from a
+# checkout (python -m ...), not installed as a library, so there is no
+# build-system table and nothing here is resolved by pip.
+
+[project.urls]
+Source = "https://github.com/awpbash/verbatim"
+
+# --------------------------------------------------------------------------- #
+# pytest
+# --------------------------------------------------------------------------- #
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = ["error::DeprecationWarning:pipeline.*"]
+
+# --------------------------------------------------------------------------- #
+# ruff
+# --------------------------------------------------------------------------- #
+# Deliberately narrow, and it stays narrow. The selected rules catch real
+# defects: undefined names, unused imports and variables, mutable default
+# arguments, exceptions that lose their cause. Style opinions (import order,
+# quote characters, line reflow, Optional[X] versus X | None) are NOT enforced,
+# because re-sorting 60k lines to satisfy a formatter buries the history that
+# explains why the code is the way it is. Read the surrounding code and match it.
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".venv", "web", "storage"]
+
+[tool.ruff.lint]
+select = [
+    "F",      # pyflakes: undefined names, unused imports and variables
+    "E9",     # syntax and IO errors
+    "B",      # bugbear: mutable defaults, loop-variable capture, lost causes
+]
+ignore = [
+    "B008",   # FastAPI's Depends() in a default argument is the framework idiom
+    "B905",   # zip(strict=) is noise on pairs that are correct by construction
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests import for side effects and shadow names on purpose.
+"tests/**" = ["F811", "B011"]

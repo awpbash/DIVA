@@ -1,0 +1,58 @@
+# =============================================================================
+# VIEW-TIME ACCESS POLICY (RBAC redaction)
+#
+# A POLICY layer, deliberately SEPARATE from the knowledge graph: facts remain
+# facts; what a given role may SEE is decided here, at answer time. This is NOT
+# baked into extraction or the graph, so it scales to new documents for free —
+# a new contract's Charge/Rate facts are classified automatically.
+#
+# Enforcement (api/rag/policy.py + the chat route):
+#   * answer:   restricted facts are dropped from the evidence BEFORE synth, so
+#               the model never sees them (secure by construction); the answer
+#               notes how many were withheld.
+#   * evidence: restricted citations are returned to the client TAGGED, so the
+#               UI blurs the snippet + its PDF rects.
+#
+# The viewer's role comes from the login session. See SECURITY.md for what that
+# does and does not guarantee on a shared network.
+#
+# THIS IS THE FALLBACK FILE, used only by a domain that ships no
+# `sensitivity.<domain>.yaml` of its own. It deliberately names NO fact labels,
+# because a label list is domain vocabulary and a wrong one is worse than an
+# empty one: it looks like redaction is configured while matching nothing.
+#
+# To turn redaction on for your domain, copy this file to
+# `sensitivity.<your-domain>.yaml` and fill in `labels` with the fact labels
+# your pack declares. `python -m scripts.setup --check` reports any label that
+# names something the active pack does not have.
+# =============================================================================
+
+# Sensitivity classes -> the typed facts they cover. A fact is classified by
+# its graph label first, then (for raw orphan fragments) its harvest raw_label.
+classes:
+  financial:
+    description: Monetary terms, including deposits, fees, charges and rates.
+    # Empty on purpose. Your domain's money labels go in your own file.
+    labels: []
+    # Harvest labels are the engine's own vocabulary, not a domain's, so these
+    # stay useful everywhere and cover raw fragments that never got a type.
+    raw_labels: [money, money_or_rate, money-or-rate, rate]
+
+# Roles -> the sensitivity classes they are DENIED. Empty deny = sees all.
+# The role now comes from the LOGIN SESSION (account roles admin / confidential /
+# default). "general" / "finance" remain as legacy aliases: the admin-only chat
+# impersonation override and older eval cases still speak them.
+roles:
+  default:                 # everyday accounts — monetary terms hidden
+    deny: [financial]
+  confidential:            # cleared accounts — sees everything
+    deny: []
+  admin:                   # administrators — sees everything
+    deny: []
+  general:                 # legacy alias of `default`
+    deny: [financial]
+  finance:                 # legacy alias of `confidential`
+    deny: []
+
+# Unknown/missing roles fall back to this (fail-closed: the denying role).
+default_role: default

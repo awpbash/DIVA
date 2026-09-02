@@ -1,0 +1,211 @@
+/* Floating "How to use" guide. The round "?" FAB sits stacked above the
+   Feedback pill (bottom-right, see FeedbackButton.css); the guide itself is a
+   centered modal with a section rail and annotated screenshots. */
+.help {
+  position: fixed;
+  right: 18px;
+  bottom: 62px;
+  z-index: 59;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.help__fab {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.help__fab:hover { border-color: var(--accent); color: var(--text); }
+
+/* ---- The guide modal ---- */
+.helpm__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(8, 9, 12, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.helpm {
+  width: min(880px, 96vw);
+  height: min(720px, 92vh);
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg, 10px);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.helpm__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.helpm__close {
+  border: none;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-subtle);
+  padding: 0 2px;
+}
+.helpm__close:hover { color: var(--text); }
+
+.helpm__layout {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.helpm__nav {
+  flex: none;
+  width: 176px;
+  padding: 12px 8px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.helpm__nav-item {
+  border: none;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  line-height: 1.35;
+}
+.helpm__nav-item:hover { background: var(--bg-card-hover); color: var(--text); }
+.helpm__nav-item.is-active { background: var(--accent-soft); color: var(--accent); }
+
+.helpm__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 22px 22px;
+  scroll-behavior: smooth;
+}
+
+.helpm__section { padding-top: 18px; scroll-margin-top: 6px; }
+.helpm__section + .helpm__section {
+  margin-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.helpm__section h4 {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+.helpm__section p {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.helpm__steps {
+  list-style: none;
+  margin: 4px 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.helpm__steps li {
+  display: flex;
+  gap: 9px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+/* The amber badge mirrors the markers inside the screenshots, so a numbered
+   step and its on-screen location read as one. */
+.helpm__badge {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: #f5a623;
+  color: #15161a;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 19px;
+  text-align: center;
+}
+
+.helpm__shot {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  margin: 6px 0 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius, 8px);
+}
+
+.helpm__note {
+  margin-top: 8px !important;
+  font-size: 12px !important;
+  color: var(--text-subtle) !important;
+}
+
+.helpm__roles {
+  list-style: none;
+  margin: 8px 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.helpm__roles li {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.helpm__roles b { color: var(--text); font-weight: 600; }
+.helpm__you {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-pill, 999px);
+  vertical-align: 1px;
+}
+
+@media (max-width: 720px) {
+  .helpm__nav { display: none; }
+}
