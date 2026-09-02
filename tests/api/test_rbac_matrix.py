@@ -335,13 +335,25 @@ _PARAM_FILL = {
 }
 
 
+def _all_routes(routes):
+    """Flatten app.routes, descending into routers `include_router` wraps
+    lazily (FastAPI >=0.14x's `_IncludedRouter`) instead of copying their
+    routes onto the app directly."""
+    for r in routes:
+        nested = getattr(r, "original_router", None)
+        if nested is not None:
+            yield from _all_routes(nested.routes)
+        else:
+            yield r
+
+
 def _declared_routes():
     """(method, template, concrete_path) for every API route the app declares."""
     import re
 
     from api.main import app
     out = []
-    for r in app.routes:
+    for r in _all_routes(app.routes):
         path = getattr(r, "path", "")
         methods = getattr(r, "methods", None) or set()
         # The SPA catch-all serves the frontend bundle and must stay public.
@@ -367,6 +379,11 @@ def test_every_route_is_gated_or_explicitly_public(rig):
     leaks = []
     for method, template, concrete in _declared_routes():
         if (method, template) in PUBLIC_ROUTES:
+            continue
+        # The setup wizard runs before any session exists — see
+        # api/routes/setup.py's module docstring for why it self-gates on
+        # appdb.is_setup_complete() instead of a session dependency.
+        if template.startswith("/setup/"):
             continue
         r = client.request(method, concrete, json={})
         if r.status_code != 401:
