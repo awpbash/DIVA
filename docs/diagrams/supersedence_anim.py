@@ -71,7 +71,15 @@ class Supersedence(Scene):
         for (title, date), x in zip(docs, COLS):
             box = Rectangle(width=2.5, height=0.95, stroke_color=RULE,
                             stroke_width=1.5, fill_color=CARD, fill_opacity=1)
-            t = label(title, 21, INK, weight=BOLD).move_to(box).shift(UP * 0.17)
+            # "Second Amendment" is wider than the box at this font size and
+            # used to run past both edges — shrink the title to fit instead of
+            # hand-tuning a size that only happens to work for these three
+            # strings.
+            t = label(title, 21, INK, weight=BOLD)
+            max_w = box.width - 0.3
+            if t.width > max_w:
+                t.scale_to_fit_width(max_w)
+            t.move_to(box).shift(UP * 0.17)
             d = label(date, 17, MUTED, mono=True).move_to(box).shift(DOWN * 0.2)
             card = VGroup(box, t, d).move_to([x, CARD_Y, 0])
             self.cards.add(card)
