@@ -42,7 +42,7 @@ is anchored to a verbatim snippet and a rectangle on the page, which a person
 then checks against that highlight before it's trusted.
 
 Once every document has the same verified fields filled in, the hard
-cross-document questions stop being guesswork and turn into ordinary code —
+cross-document questions stop being guesswork and turn into ordinary code:
 which rate is currently in force across an amendment chain, what a set of
 deposits add up to, which of five versions of a clause is the one that's live.
 
@@ -140,7 +140,8 @@ docker compose up -d            # the app
 `scripts/setup` runs seven checks in dependency order and stops at the first
 real problem, so the output names the one thing to fix. It creates the
 database, the container, and the first admin account, costs nothing, and calls
-no model — re-run it any time. `--check` reports without changing anything:
+no model, so it's safe to re-run any time. `--check` reports without changing
+anything:
 
 ```
 $ python -m scripts.setup --check
@@ -308,7 +309,7 @@ python -m eval.extraction.score --run NAME
 ```
 
 Run it rather than trusting a number in a README. This public branch does not
-ship the private gold set from the original project; create one for your own
+ship the private gold set from the original project, so create one for your own
 domain with `python -m eval.extraction.score --dump`, check it in privately,
 and use it as your extraction regression gate.
 
@@ -331,7 +332,7 @@ cd web && npm run build
 Two things cost money, and both are cached so you pay once.
 
 - **Ingesting a document.** It scales with pages, and reading them dominates
-  the cost — the three PDFs in the sample corpus came to about 27,000 tokens,
+  the cost. The three PDFs in the sample corpus came to about 27,000 tokens,
   while a long scanned contract is a different order of magnitude entirely.
   Re-running it later is free, since every stage is cached.
 - **Asking a question.** Small change per question, several tool calls each.

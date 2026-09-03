@@ -141,9 +141,10 @@ def check(cx: float, cy: float, colour: str, r: float = 8) -> str:
 # --------------------------------------------------------------------------- #
 # System icons, used only by `architecture` below. A hand-built minimum: an
 # isometric box for "one container", a cylinder for a database, a folder for a
-# filesystem, a cloud for an external endpoint — the small vocabulary any
-# component diagram needs, drawn in the same flat, single-stroke style as
-# everything else here rather than pulled from an icon font or library.
+# filesystem, and a cloud for an external endpoint. That is the small
+# vocabulary any component diagram needs, drawn in the same flat, single-
+# stroke style as everything else here rather than pulled from an icon font
+# or library.
 # --------------------------------------------------------------------------- #
 def cube_icon(x: float, y: float, s: float, *, stroke: str) -> str:
     top = f"M {x} {y+s*0.5} L {x+s*0.5} {y} L {x+s} {y+s*0.5} L {x+s*0.5} {y+s} Z"
@@ -493,9 +494,9 @@ def retrieval_modes(c: dict) -> str:
 # --------------------------------------------------------------------------- #
 # 4. architecture
 # --------------------------------------------------------------------------- #
-# Claim: the whole application is one container, and it talks to exactly three
-# things outside itself — the browser, a database, and a model endpoint you
-# can point anywhere.
+# Claim: the whole application is one container. A browser is the one thing
+# it answers to; a model endpoint, a database, and a local storage folder are
+# the three things it depends on behind that.
 #
 # The one detail worth the reader's attention is what does NOT get its own
 # box: the three things inside the container (API, retrieval agent, ingestion
@@ -564,7 +565,7 @@ def architecture(c: dict) -> str:
                          back=c["panelrule"], stroke=c["panelrule"]))
     o.append(text(rx0 + rw / 2, cy_disk + 42, "storage/", size=14, fill=c["ink"],
                   anchor="middle", weight="700", mono=True))
-    o.append(text(rx0 + rw / 2, cy_disk + 62, "PDFs · pages · extractions", size=11,
+    o.append(text(rx0 + rw / 2, cy_disk + 62, "PDFs · pages · extractions · app.db", size=11,
                   fill=c["muted"], anchor="middle"))
 
     midy = ky + kh / 2

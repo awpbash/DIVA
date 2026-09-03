@@ -57,7 +57,7 @@ detail. A figure carries one idea.
   one artifact changing, anchoring as a physical tether. A figure that could
   describe an unrelated system after relabelling has failed and needs
   redesigning, not retouching.
-- **Different arguments get different visual grammars.** These three
+- **Different arguments get different visual grammars.** These four
   deliberately do not share a template. `retrieval-modes` draws its two
   branches in visibly different styles because the whole point is that they
   are different kinds of machinery.
@@ -74,14 +74,18 @@ detail. A figure carries one idea.
 
 ## Diagrams that are not here
 
-Most structural diagrams — a pipeline stage list, a sequence of API calls —
-live inline in the documentation as Mermaid, which GitHub renders natively and
-which stays readable in a diff. See [Architecture](../architecture.md).
+Most structural diagrams, a pipeline stage list, a sequence of API calls, live
+inline in the documentation as Mermaid, which GitHub renders natively and
+which stays readable in a diff. [Architecture](../architecture.md) has the
+full set, including the request sequence and the document-arrival flow that
+this figure deliberately leaves out.
 
 `architecture` is the one exception, and it earns its place here rather than
 as Mermaid: a top-level component map is something a reader keeps coming back
 to, so it is worth the icon vocabulary (the isometric box, the cylinder, the
 folder, the cloud, all in `make_diagrams.py`) that a plain flowchart box
-cannot give it. Use Mermaid for an ordinary map of components. Use this
-directory when the diagram is either an argument or the one picture a reader
-should recognise on sight.
+cannot give it. It draws the same container, the same three things outside
+it, and the same labels as the first diagram in Architecture, so if you
+relabel one, relabel the other. Use Mermaid for an ordinary map of components.
+Use this directory when the diagram is either an argument or the one picture
+a reader should recognise on sight.
