@@ -6,17 +6,30 @@ and `/admin/dev-reset` (api/routes/admin.py) — one implementation of "how a
 restart actually happens" rather than each caller inventing its own.
 
 Write the config, respond `200`, then on a daemon thread, sleep briefly and
-exit. Confirmed live (docker inspect + /proc) under `uvicorn --reload` (the
-compose dev command): PID 1 in the container is the reload supervisor, and
-this handler runs in its worker *child* process. Exiting only the child
-leaves the supervisor alive with nothing to respawn until it next notices a
-watched-file change on its own schedule — a race that was lost during real
-testing, leaving the instance unreachable until someone found it and ran
-`docker compose restart` by hand. So: if we're not PID 1, SIGTERM our parent
-(the supervisor) first — that takes the whole container down, which is what
-`docker-compose.yml`'s `restart: unless-stopped` actually reacts to — then
-exit ourselves either way (the plain `uvicorn` invocation with no --reload
-has no separate supervisor, so self-exit alone is already correct there).
+exit. Two real setups, two different mechanisms:
+
+  - No `--reload` (`docker-compose*.yml`'s prod invocation, via
+    `api/boot_seed.py`'s `os.execvp` into plain uvicorn): this process IS
+    PID 1, so exiting it is what `restart: always`/`unless-stopped` reacts
+    to. Unchanged from the original, always-worked version of this file.
+  - `--reload` (both compose files' dev command, and a developer running
+    `uvicorn --reload` directly): confirmed live via `docker inspect` +
+    `/proc` that PID 1 is uvicorn's reload supervisor and this handler runs
+    in its worker *child*. Exiting only the child left the supervisor alive
+    with nothing to respawn it — the file-watcher restart the old comment
+    here assumed only ever applied to `/setup/domain/activate` (the one
+    caller that writes a watched-dir file in the same request); `finish()`
+    and `dev-reset()` write to `storage/app.db`, which isn't watched, so
+    they never had a safety net. The container sat unreachable until
+    someone found it and ran `docker compose restart` by hand.
+    Under Docker, killing the worker's parent (the supervisor, i.e. the
+    container's PID 1) is safe: `restart: always`/`unless-stopped` brings
+    the whole thing back. Outside Docker there is no such policy, so doing
+    the same thing would just kill the developer's terminal session dead
+    with no recovery — worse than today's occasional silent hang. `/.dockerenv`
+    is Docker's own marker file, present in every container it starts, and
+    is the cheap way to tell those two cases apart.
+
 See docs/setup-wizard-plan.md section 3.6 for why an in-place `os.execvp`
 (safe in `api/boot_seed.py`, which runs before uvicorn ever binds a socket)
 is the wrong model for restarting a worker that already holds a live
@@ -28,15 +41,18 @@ import os
 import signal
 import threading
 import time
+from pathlib import Path
+
+_IN_CONTAINER = Path("/.dockerenv").exists()
 
 
 def trigger_restart(delay: float = 1.0) -> None:
-    """Exit this process (and its reload supervisor, if any) after `delay`
-    seconds, on a daemon thread, so the caller's own HTTP response reaches
-    the browser first."""
+    """Exit this process (and its reload supervisor, if any and if it's
+    safe to) after `delay` seconds, on a daemon thread, so the caller's own
+    HTTP response reaches the browser first."""
     def _die() -> None:
         time.sleep(delay)
-        if os.getpid() != 1:
+        if _IN_CONTAINER and os.getpid() != 1:
             try:
                 os.kill(os.getppid(), signal.SIGTERM)
             except OSError:
