@@ -116,9 +116,13 @@ function MainApp() {
     // then switching to Chat used to show a stale, empty doc list until a
     // hard reload, and any citation click silently failed to open its
     // source for the same reason (viewerDoc couldn't resolve the new doc_id).
+    // `cancelled` drops a response from a tab switch the user has already
+    // clicked past, so a slow fetch can't overwrite a newer, faster one.
+    let cancelled = false;
     listDocuments()
-      .then(d => setDocs(sortDocs(d)))
+      .then(d => { if (!cancelled) setDocs(sortDocs(d)); })
       .catch(err => console.error("listDocuments:", err));
+    return () => { cancelled = true; };
   }, [tab]);
 
   const selectedDocs = useMemo(
