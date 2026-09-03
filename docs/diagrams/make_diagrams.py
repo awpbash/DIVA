@@ -15,7 +15,7 @@ geometry and differ only in colour, and a figure that drifts from the thing it
 describes is worse than no figure. Editing one function and re-running is the
 only way that stays true.
 
-Three figures, one claim each. If you cannot say the claim in a sentence, the
+Four figures, one claim each. If you cannot say the claim in a sentence, the
 figure is not ready:
 
   evidence-chain   Every value stays tethered to the pixels it came from, and
@@ -24,6 +24,8 @@ figure is not ready:
                    the same code either way.
   retrieval-modes  The question decides the machinery. Money is added up in
                    Python, never by a language model.
+  architecture     The whole application is one container, talking to exactly
+                   three things outside itself.
 
 Colours track the application's own palette (web/src/styles.css), so amber
 means evidence highlight here for the same reason it does in the PDF viewer.
@@ -134,6 +136,54 @@ def check(cx: float, cy: float, colour: str, r: float = 8) -> str:
             f'<path d="M {cx - d} {cy} l {d * 0.75} {d * 0.8} l {d * 1.25} '
             f'{-d * 1.6}" fill="none" stroke="#fff" stroke-width="1.9" '
             f'stroke-linecap="round" stroke-linejoin="round"/>')
+
+
+# --------------------------------------------------------------------------- #
+# System icons, used only by `architecture` below. A hand-built minimum: an
+# isometric box for "one container", a cylinder for a database, a folder for a
+# filesystem, a cloud for an external endpoint — the small vocabulary any
+# component diagram needs, drawn in the same flat, single-stroke style as
+# everything else here rather than pulled from an icon font or library.
+# --------------------------------------------------------------------------- #
+def cube_icon(x: float, y: float, s: float, *, stroke: str) -> str:
+    top = f"M {x} {y+s*0.5} L {x+s*0.5} {y} L {x+s} {y+s*0.5} L {x+s*0.5} {y+s} Z"
+    left = f"M {x} {y+s*0.5} L {x+s*0.5} {y+s} L {x+s*0.5} {y+s*1.8} L {x} {y+s*1.3} Z"
+    right = f"M {x+s} {y+s*0.5} L {x+s*0.5} {y+s} L {x+s*0.5} {y+s*1.8} L {x+s} {y+s*1.3} Z"
+    return (f'<path d="{top}" fill="none" stroke="{stroke}" stroke-width="1.4" '
+            f'stroke-linejoin="round"/>'
+            f'<path d="{left}" fill="none" stroke="{stroke}" stroke-width="1.4" '
+            f'stroke-linejoin="round" opacity="0.7"/>'
+            f'<path d="{right}" fill="none" stroke="{stroke}" stroke-width="1.4" '
+            f'stroke-linejoin="round" opacity="0.55"/>')
+
+
+def cylinder_icon(cx: float, top: float, w: float, h: float, *, fill: str,
+                   stroke: str, sw: float = 1.6) -> str:
+    rx, ry = w / 2, w * 0.16
+    bottom = top + h
+    body = (f"M {cx-rx} {top+ry} L {cx-rx} {bottom-ry} "
+            f"A {rx} {ry} 0 0 0 {cx+rx} {bottom-ry} L {cx+rx} {top+ry} "
+            f"A {rx} {ry} 0 0 0 {cx-rx} {top+ry} Z")
+    return (f'<path d="{body}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"/>'
+            f'<ellipse cx="{cx}" cy="{top+ry}" rx="{rx}" ry="{ry}" fill="{fill}" '
+            f'stroke="{stroke}" stroke-width="{sw}"/>')
+
+
+def folder_icon(x: float, y: float, w: float, h: float, *, fill: str,
+                 back: str, stroke: str, sw: float = 1.6) -> str:
+    tabw = w * 0.42
+    return (rect(x, y, tabw, h * 0.22, fill=back, rx=3) +
+            rect(x, y + h * 0.14, w, h * 0.86, fill=fill, stroke=stroke, rx=6, sw=sw))
+
+
+def cloud_icon(cx: float, cy: float, s: float, *, fill: str, stroke: str,
+               sw: float = 1.8) -> str:
+    d = (f"M {cx-60*s} {cy+18*s} "
+         f"C {cx-80*s} {cy+18*s} {cx-82*s} {cy-8*s} {cx-56*s} {cy-13*s} "
+         f"C {cx-56*s} {cy-40*s} {cx-14*s} {cy-44*s} {cx-1*s} {cy-25*s} "
+         f"C {cx+24*s} {cy-40*s} {cx+58*s} {cy-22*s} {cx+52*s} {cy-1*s} "
+         f"C {cx+75*s} {cy-1*s} {cx+77*s} {cy+18*s} {cx+54*s} {cy+18*s} Z")
+    return f'<path d="{d}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}" stroke-linejoin="round"/>'
 
 
 def svg(w: float, h: float, body: str, *, title: str, desc: str) -> str:
@@ -440,10 +490,108 @@ def retrieval_modes(c: dict) -> str:
                     "computed in Python rather than by a language model.")
 
 
+# --------------------------------------------------------------------------- #
+# 4. architecture
+# --------------------------------------------------------------------------- #
+# Claim: the whole application is one container, and it talks to exactly three
+# things outside itself — the browser, a database, and a model endpoint you
+# can point anywhere.
+#
+# The one detail worth the reader's attention is what does NOT get its own
+# box: the three things inside the container (API, retrieval agent, ingestion
+# pipeline) live in the same process and the same deploy, which is the point
+# of drawing them nested rather than as peers of the browser or the database.
+# --------------------------------------------------------------------------- #
+def architecture(c: dict) -> str:
+    W, H = 1180, 560
+    o: list[str] = []
+
+    bx, by, bw, bh = 56, 210, 220, 160
+    o.append(rect(bx, by, bw, bh, fill=c["paper"], stroke=c["rule"], rx=8))
+    o.append(rect(bx, by, bw, 24, fill=c["panel"], stroke=c["rule"], rx=8))
+    o.append(rect(bx, by + 14, bw, 10, fill=c["panel"]))
+    for i in range(3):
+        o.append(dot(bx + 16 + i * 14, by + 12, 3.2, c["subtle"]))
+    o.append(text(bx + bw / 2, by + 66, "React workspace", size=15, fill=c["ink"],
+                  anchor="middle", weight="700"))
+    o.append(text(bx + bw / 2, by + 92, "chat · review · knowledge", size=11.5,
+                  fill=c["muted"], anchor="middle"))
+    o.append(text(bx + bw / 2, by + 110, "explore · admin", size=11.5,
+                  fill=c["muted"], anchor="middle"))
+    o.append(text(bx + bw / 2, by + bh - 16, "Browser", size=10, fill=c["subtle"],
+                  anchor="middle", weight="700", spacing=1.4))
+
+    kx, ky, kw, kh = 330, 60, 420, 440
+    o.append(rect(kx, ky, kw, kh, fill="none", stroke=c["rule"], rx=12, sw=1.6,
+                  dash="6 5"))
+    o.append(cube_icon(kx + 18, ky + 16, 20, stroke=c["accent"]))
+    o.append(text(kx + 54, ky + 34, "APPLICATION CONTAINER", size=10,
+                  fill=c["accent"], weight="700", spacing=1.4))
+    o.append(text(kx + kw - 18, ky + 34, "one image, one port", size=11,
+                  fill=c["subtle"], anchor="end"))
+
+    cards = [
+        ("FastAPI", "routes · auth · RBAC"),
+        ("Retrieval agent", "planner → tools → synthesis"),
+        ("Ingestion pipeline", "read → extract → build"),
+    ]
+    cy0, ch, gap = ky + 58, 96, 20
+    for i, (name, sub) in enumerate(cards):
+        cyy = cy0 + i * (ch + gap)
+        o.append(rect(kx + 20, cyy, kw - 40, ch, fill=c["panel"],
+                      stroke=c["panelrule"], rx=8))
+        o.append(text(kx + 44, cyy + 38, name, size=15, fill=c["ink"], weight="700"))
+        o.append(text(kx + 44, cyy + 62, sub, size=12, fill=c["muted"], mono=True))
+
+    rx0, rw = 830, 280
+    cy_cloud = 128
+    o.append(cloud_icon(rx0 + rw / 2, cy_cloud, 1.05, fill=c["panel"], stroke=c["subtle"]))
+    o.append(text(rx0 + rw / 2, cy_cloud + 44, "Model endpoint", size=14,
+                  fill=c["ink"], anchor="middle", weight="700"))
+    o.append(text(rx0 + rw / 2, cy_cloud + 64, "OpenAI-compatible, any host",
+                  size=11, fill=c["muted"], anchor="middle"))
+
+    cy_db = 300
+    o.append(cylinder_icon(rx0 + rw / 2, cy_db - 34, 78, 68, fill=c["panel"],
+                           stroke=c["panelrule"]))
+    o.append(text(rx0 + rw / 2, cy_db + 52, "Cosmos DB", size=14, fill=c["ink"],
+                  anchor="middle", weight="700"))
+    o.append(text(rx0 + rw / 2, cy_db + 72, "records · edges · vectors", size=11,
+                  fill=c["muted"], anchor="middle"))
+
+    cy_disk = 460
+    o.append(folder_icon(rx0 + rw / 2 - 40, cy_disk - 36, 80, 60, fill=c["panel"],
+                         back=c["panelrule"], stroke=c["panelrule"]))
+    o.append(text(rx0 + rw / 2, cy_disk + 42, "storage/", size=14, fill=c["ink"],
+                  anchor="middle", weight="700", mono=True))
+    o.append(text(rx0 + rw / 2, cy_disk + 62, "PDFs · pages · extractions", size=11,
+                  fill=c["muted"], anchor="middle"))
+
+    midy = ky + kh / 2
+    o.append(arrow(bx + bw, midy - 10, kx, midy - 10, stroke=c["accent"], sw=1.8))
+    o.append(arrow(kx, midy + 10, bx + bw, midy + 10, stroke=c["accent"], sw=1.8))
+    o.append(text((bx + bw + kx) / 2, midy - 22, "HTTPS · session token", size=11,
+                  fill=c["accent"], anchor="middle", weight="600"))
+
+    o.append(arrow(kx + kw, ky + 90, rx0, cy_cloud, stroke=c["muted"], sw=1.6))
+    o.append(arrow(kx + kw, midy, rx0, cy_db, stroke=c["teal"], sw=1.6))
+    o.append(arrow(kx + kw, ky + kh - 60, rx0, cy_disk, stroke=c["teal"], sw=1.6))
+
+    return svg(W, H, "".join(o),
+               title="One container, three things outside it",
+               desc="A browser talks over HTTPS to a single application "
+                    "container holding FastAPI, the retrieval agent and the "
+                    "ingestion pipeline. The container in turn talks to a "
+                    "model endpoint, a Cosmos DB database, and a local "
+                    "storage folder, drawn as a cloud, a cylinder and a "
+                    "folder respectively.")
+
+
 FIGURES = {
     "evidence-chain": evidence_chain,
     "domain-layers": domain_layers,
     "retrieval-modes": retrieval_modes,
+    "architecture": architecture,
 }
 
 

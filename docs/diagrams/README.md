@@ -8,6 +8,7 @@ not drawn by hand. Change the source, re-run, commit both.
 | `evidence-chain` | Every value stays tethered to the pixels it came from, and abstaining leaves nothing to tether | `make_diagrams.py` |
 | `domain-layers` | A new document type is four files you write. The engine is the same code either way | `make_diagrams.py` |
 | `retrieval-modes` | The question decides the machinery. Money is added up in Python, never by a language model | `make_diagrams.py` |
+| `architecture` | The whole application is one container, talking to exactly three things outside itself | `make_diagrams.py` |
 | `supersedence.gif` | "Current" is resolved per field, by walking backwards until a document sets that field | `supersedence_anim.py` |
 
 ## Regenerating
@@ -73,9 +74,14 @@ detail. A figure carries one idea.
 
 ## Diagrams that are not here
 
-Structural diagrams live inline in the documentation as Mermaid, which GitHub
-renders natively and which stays readable in a diff. See
-[Architecture](../architecture.md).
+Most structural diagrams — a pipeline stage list, a sequence of API calls —
+live inline in the documentation as Mermaid, which GitHub renders natively and
+which stays readable in a diff. See [Architecture](../architecture.md).
 
-Use Mermaid when the diagram is a map of components. Use this directory when
-the diagram is an argument.
+`architecture` is the one exception, and it earns its place here rather than
+as Mermaid: a top-level component map is something a reader keeps coming back
+to, so it is worth the icon vocabulary (the isometric box, the cylinder, the
+folder, the cloud, all in `make_diagrams.py`) that a plain flowchart box
+cannot give it. Use Mermaid for an ordinary map of components. Use this
+directory when the diagram is either an argument or the one picture a reader
+should recognise on sight.
