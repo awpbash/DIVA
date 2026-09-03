@@ -33,17 +33,18 @@ every one of them.
 
 ---
 
-## What makes it different
+## Schema first
 
-Most retrieval systems mine open-ended text and hope the pieces line up. This
-one inverts that. **You write a field schema. A model fills it in, anchoring
-every value to a verbatim snippet and a rectangle on the page. A person
-verifies each field against that highlight.**
+Most retrieval systems mine open-ended text and hope the pieces line up
+afterwards. This one works the other way around: you write a field schema
+first, a model fills it in against your documents, and every value it produces
+is anchored to a verbatim snippet and a rectangle on the page, which a person
+then checks against that highlight before it's trusted.
 
-Once every document has filled the same verified fields, the hard
-cross-document work falls out of ordinary code instead of model guesswork:
-which rate is currently in force across an amendment chain, what the deposits
-add up to, which of five versions of a clause is the live one.
+Once every document has the same verified fields filled in, the hard
+cross-document questions stop being guesswork and turn into ordinary code —
+which rate is currently in force across an amendment chain, what a set of
+deposits add up to, which of five versions of a clause is the one that's live.
 
 Here is the part that is easy to get wrong, and the reason the sample corpus
 exists:
@@ -138,9 +139,8 @@ docker compose up -d            # the app
 
 `scripts/setup` runs seven checks in dependency order and stops at the first
 real problem, so the output names the one thing to fix. It creates the
-database, the container, and the first admin account. It costs nothing and
-calls no model. Re-run it any time. `--check` reports without changing
-anything:
+database, the container, and the first admin account, costs nothing, and calls
+no model — re-run it any time. `--check` reports without changing anything:
 
 ```
 $ python -m scripts.setup --check
@@ -178,10 +178,10 @@ Python.
   <img alt="Four configuration file cards across the top, labelled you write. Below a dashed line marked the line between configuration and code, a single dark slab labelled the engine, identical for every domain, listing the module names a domain author never edits." src="docs/diagrams/domain-layers-light.svg">
 </picture>
 
-The field schema is the important one. It is the canonical target, and it is
-why this approach avoids the problem where the same concept comes back under
-six different names across a corpus. A bounded, named field does not drift the
-way an open-ended extracted phrase does.
+The field schema is the important one: it's the canonical target, and it's why
+this approach avoids the problem of the same concept coming back under six
+different names across a corpus. A bounded, named field doesn't drift the way
+an open-ended extracted phrase does.
 
 **One deployment serves one domain.** It resolves once at startup, from
 `VERBATIM_DOMAIN` or `configs/pipeline.yaml`. With more than one pack present
@@ -202,6 +202,18 @@ claims.
 ---
 
 ## How it works
+
+The whole thing runs as one container. Your browser talks to it over HTTPS,
+and it in turn talks to the only three things outside itself: a database, a
+local folder, and whichever model endpoint you've pointed it at.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/architecture-dark.svg">
+  <img alt="A browser talks over HTTPS to a single application container holding FastAPI, the retrieval agent and the ingestion pipeline. The container in turn talks to a model endpoint, a Cosmos DB database, and a local storage folder, drawn as a cloud, a cylinder and a folder respectively." src="docs/diagrams/architecture-light.svg">
+</picture>
+
+A document goes through the same four stages regardless of what kind of
+contract it is:
 
 ```mermaid
 flowchart LR
@@ -318,9 +330,10 @@ cd web && npm run build
 
 Two things cost money, and both are cached so you pay once.
 
-- **Ingesting a document.** It scales with pages, and reading them dominates.
-  The three PDFs in the sample corpus came to about 27,000 tokens. A long
-  scanned contract is a different order of magnitude. Re-running is free.
+- **Ingesting a document.** It scales with pages, and reading them dominates
+  the cost — the three PDFs in the sample corpus came to about 27,000 tokens,
+  while a long scanned contract is a different order of magnitude entirely.
+  Re-running it later is free, since every stage is cached.
 - **Asking a question.** Small change per question, several tool calls each.
 
 For a sense of scale: loading the sample corpus, filling the schema three
