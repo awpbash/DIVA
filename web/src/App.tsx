@@ -112,10 +112,14 @@ function MainApp() {
     // No auto-scope: the default is ALL documents. The PDF pane stays on a
     // purposeful empty state until a citation or an explicit doc click picks
     // one — an arbitrary cover page reads as noise, not orientation.
+    // Refetches on every tab switch, not just on mount: uploading in Admin
+    // then switching to Chat used to show a stale, empty doc list until a
+    // hard reload, and any citation click silently failed to open its
+    // source for the same reason (viewerDoc couldn't resolve the new doc_id).
     listDocuments()
       .then(d => setDocs(sortDocs(d)))
       .catch(err => console.error("listDocuments:", err));
-  }, []);
+  }, [tab]);
 
   const selectedDocs = useMemo(
     () => docs.filter(d => selectedDocIds.includes(d.doc_id)),
