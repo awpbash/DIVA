@@ -1,7 +1,17 @@
 # Technology reference
 
+![Python](images/badges/python.svg)
+![FastAPI](images/badges/fastapi.svg)
+![React](images/badges/react.svg)
+![TypeScript](images/badges/typescript.svg)
+![Vite](images/badges/vite.svg)
+![Docker](images/badges/docker.svg)
+![SQLite](images/badges/sqlite.svg)
+![Azure](images/badges/azure.svg)
+![OpenAI](images/badges/openai.svg)
+
 This page lists the main technologies and the switches that change runtime
-behavior. It is a reference, not a second architecture guide; see
+behavior. It is a reference, not a second architecture guide, see
 [Architecture](architecture.md) for component relationships.
 
 ## Main stack
@@ -20,6 +30,12 @@ behavior. It is a reference, not a second architecture guide; see
 | Spreadsheet export | `openpyxl` | Export knowledge results from the UI |
 
 ## Document readers and OCR geometry
+
+![ONNX Runtime](images/badges/onnx-runtime.svg)
+![PaddlePaddle](images/badges/paddlepaddle.svg)
+
+The PaddlePaddle badge marks a model lineage, not an installed package, see
+the note below the table.
 
 | Mode | Package or service | Geometry source |
 | --- | --- | --- |
@@ -62,7 +78,7 @@ deployment.
 
 Cosmos DB stores graph records, relationships, and vectors in one container.
 `pipeline/store/` is the access boundary. Local development uses the emulator
-and exact in-memory vector ranking; a real Azure account can use Cosmos native
+and exact in-memory vector ranking. A real Azure account can use Cosmos native
 vector search.
 
 | Setting | Development default | Other option |
@@ -73,7 +89,7 @@ vector search.
 | `STORAGE_ROOT` | `./storage` | A mounted persistent directory |
 
 Cosmos is a searchable projection. The original files, extraction artifacts,
-and application state are under `storage/`; use
+and application state are under `storage/`. Use
 `python -m scripts.rebuild_kb` to recreate the projection.
 
 ## Runtime switches
@@ -82,8 +98,8 @@ and application state are under `storage/`; use
 | --- | --- | --- |
 | Active domain | `VERBATIM_DOMAIN` | Selects the analyzer, pack, ontology, and field view |
 | Reader | `READER` | Chooses `rapidocr` or `cu` |
-| Page size | `RENDER_DPI` | Controls rendered image resolution; default `300` |
-| Reader concurrency | `VISION_PAGE_CONCURRENCY` | Limits pages processed in parallel; default `4` |
+| Page size | `RENDER_DPI` | Controls rendered image resolution, default `300` |
+| Reader concurrency | `VISION_PAGE_CONCURRENCY` | Limits pages processed in parallel, default `4` |
 | Review approvals | `REVIEW_MIN_APPROVALS`, `REVIEW_CORRECTION_APPROVALS` | Sets the approval count for normal and corrected values |
 | API protection | `CHAT_API_KEY`, CORS settings | Adds shared-key and browser-origin controls |
 | Logs | `LOG_FORMAT` | Use `json` for structured production logs |
