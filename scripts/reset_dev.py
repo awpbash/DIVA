@@ -23,6 +23,8 @@ What this wipes:
     schema grows new tables later.
   - every OTHER file under storage/ (uploaded PDFs, OCR/extraction caches,
     review records). These have no open handles, so plain deletion is fine.
+    app.db's WAL sidecar files (app.db-wal, app.db-shm) are kept alongside
+    app.db itself for the same reason: a live connection keeps them mapped.
   - the Cosmos knowledge-base container (``CosmosStore.nuke()`` — drop +
     recreate, the same "universal rollback lever" scripts/rebuild_kb.py
     already uses to wipe the KB for a rebuild).
@@ -76,8 +78,12 @@ def _wipe_appdb_rows(db_path: Path) -> list[str]:
 
 def _wipe_storage_files(storage_root: Path, keep: set[str]) -> list[str]:
     """Delete everything directly under storage/ except the names in
-    ``keep`` (the app database, truncated separately). No open-handle risk
-    here the way app.db has, even from a live process."""
+    ``keep`` (the app database, truncated separately, plus its WAL sidecar
+    files). Those sidecars ARE open-handle risk from a live process, same as
+    app.db itself: WAL mode keeps app.db-wal/-shm memory-mapped for as long
+    as any connection is open, and Windows refuses to unlink a mapped file
+    (the same failure mode the app.db skip already exists for). Every other
+    file here has no open handles, so plain deletion is fine."""
     if not storage_root.exists():
         return []
     removed: list[str] = []
@@ -141,7 +147,8 @@ def perform_reset(*, wipe_key: bool = False) -> dict:
     db_path = cfg.storage_root / "app.db"
     report: dict = {
         "app_db_tables": _wipe_appdb_rows(db_path),
-        "storage_files": _wipe_storage_files(cfg.storage_root, keep={"app.db"}),
+        "storage_files": _wipe_storage_files(
+            cfg.storage_root, keep={"app.db", "app.db-wal", "app.db-shm"}),
     }
     _mark_setup_pending(db_path)
     try:

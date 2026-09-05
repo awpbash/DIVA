@@ -54,8 +54,14 @@ def _db_path(cfg: Config | None = None) -> Path:
 
 
 def _conn(cfg: Config | None = None) -> sqlite3.Connection:
-    c = sqlite3.connect(_db_path(cfg))
+    # WAL + a real busy_timeout: this file is shared with api/appdb.py and
+    # api/review_votes.py, all writing the same app.db under concurrent
+    # requests. See api/appdb.py's _conn() for why that matters on an async
+    # route (a bare SQLITE_BUSY wait there blocks the whole event loop).
+    c = sqlite3.connect(_db_path(cfg), timeout=30.0)
     c.row_factory = sqlite3.Row
+    c.execute("PRAGMA journal_mode = WAL")
+    c.execute("PRAGMA busy_timeout = 30000")
     c.execute(_DDL)
     return c
 

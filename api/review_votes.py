@@ -82,8 +82,13 @@ def _db_path(cfg: Config | None = None) -> Path:
 
 
 def _conn(cfg: Config | None = None) -> sqlite3.Connection:
-    c = sqlite3.connect(_db_path(cfg))
+    # Same reasoning as api/appdb.py's _conn(): WAL + a real busy_timeout so
+    # concurrent verifiers voting don't stack up SQLITE_BUSY waits on whichever
+    # thread happens to be running the call (the event loop, for async routes).
+    c = sqlite3.connect(_db_path(cfg), timeout=30.0)
     c.row_factory = sqlite3.Row
+    c.execute("PRAGMA journal_mode = WAL")
+    c.execute("PRAGMA busy_timeout = 30000")
     c.executescript(_DDL)
     # Databases created before correction evidence / value snapshots existed
     # lack the columns.

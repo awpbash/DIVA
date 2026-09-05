@@ -24,6 +24,7 @@ Production knobs (all env vars, all optional)::
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import mimetypes
 import secrets
@@ -163,6 +164,12 @@ def _load_demo_corpus() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _log_security_posture()
+    # Catches a total, silent event-loop freeze (every route stops, including
+    # /healthz, CPU idle) that ptrace-based tools (py-spy, gdb) can't diagnose
+    # here because the container's seccomp profile blocks attach. See
+    # api/diagnostics.py for the detection method.
+    from . import diagnostics
+    diagnostics.start(asyncio.get_running_loop())
     # The app database first, and before anything that talks to a network. It
     # is a local sqlite file holding the accounts, so a fresh instance must end
     # up with its first admin even when every remote dependency is down. An

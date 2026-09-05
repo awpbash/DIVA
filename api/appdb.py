@@ -34,9 +34,20 @@ def _db_path() -> Path:
 
 
 def _conn() -> sqlite3.Connection:
-    c = sqlite3.connect(_db_path())
+    # timeout=30: Python's sqlite3 default (5s) is too short once several
+    # routes write concurrently (chat logging, job status, votes, account
+    # edits each open their own connection). A caller that hits SQLITE_BUSY
+    # after 5s raises, and if that call is running directly on the asyncio
+    # event loop (most routes here are async def), the WHOLE APP freezes for
+    # those 5 seconds, not just this request. WAL mode is the real fix: it
+    # lets readers and a writer run at once instead of taking a whole-file
+    # lock, so contention should rarely reach the timeout at all. The longer
+    # timeout is just the backstop for whatever WAL doesn't cover.
+    c = sqlite3.connect(_db_path(), timeout=30.0)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA foreign_keys = ON")
+    c.execute("PRAGMA journal_mode = WAL")
+    c.execute("PRAGMA busy_timeout = 30000")
     return c
 
 
