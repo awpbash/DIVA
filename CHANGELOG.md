@@ -11,6 +11,12 @@ published. `pyproject.toml`, `api/__init__.py` and `web/package.json` all carry
 
 ### Added
 
+- A `scale` figure in `docs/diagrams/`, the flagship demo's single three-document
+  chain beside the real-world corpus's six independent chains drawn to their
+  real length, plus a genuine screenshot (`docs/images/real-world-citation.png`)
+  of a citation answered and traced against the real-world corpus. A `README`
+  complexity table gives a rough sense of where time, disk and tokens go,
+  measured against both corpora rather than guessed.
 - `examples/real_world/`: 19 real contracts across 6 real amendment chains,
   sourced from the CUAD dataset (public SEC EDGAR filings, CC-BY-4.0
   curation, see `NOTICE`). Opt-in via `python -m scripts.load_real_world_corpus`,
@@ -89,6 +95,11 @@ published. `pyproject.toml`, `api/__init__.py` and `web/package.json` all carry
   containerized deployment's Demo button (`api/main.py`'s
   `_load_demo_corpus`) silently did nothing, since the files it looks for
   were never in the image. Added to the `Dockerfile`.
+- **The Docker image never shipped `docs/` either.** `.dockerignore` excluded
+  it outright, alongside genuinely dev-only material like `tests/` and the
+  paper source. A deployed container could not answer its own "what does this
+  button do" from its own filesystem. `docs/` is now allowed into the build
+  context and copied into the image.
 - **A verifier's correction did not move the current value until somebody ran
   a full rebuild.** "Not Stated" is how a person says a document does not state
   a field, which hands the current value back to an earlier document in the

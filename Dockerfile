@@ -73,6 +73,9 @@ COPY scripts/ scripts/
 # Missing here means every containerized deployment's Demo button silently
 # does nothing, which is exactly what happened until this line existed.
 COPY examples/ examples/
+# Documentation ships in the image too, so a deployed container is the same
+# checkout a cloned repo would be rather than a stripped-down runtime copy.
+COPY docs/ docs/
 
 # The built SPA — served by FastAPI (see api/main.py, SPA fallback).
 COPY --from=webbuild /web/dist web/dist

@@ -15,7 +15,7 @@ geometry and differ only in colour, and a figure that drifts from the thing it
 describes is worse than no figure. Editing one function and re-running is the
 only way that stays true.
 
-Four figures, one claim each. If you cannot say the claim in a sentence, the
+Five figures, one claim each. If you cannot say the claim in a sentence, the
 figure is not ready:
 
   evidence-chain   Every value stays tethered to the pixels it came from, and
@@ -26,6 +26,9 @@ figure is not ready:
                    Python, never by a language model.
   architecture     The whole application is one container, talking to exactly
                    three things outside itself.
+  scale            The same per-field walk runs whether there is one chain or
+                   six, and a real chain caught a bug the synthetic one never
+                   could.
 
 Colours track the application's own palette (web/src/styles.css), so amber
 means evidence highlight here for the same reason it does in the PDF viewer.
@@ -588,11 +591,111 @@ def architecture(c: dict) -> str:
                     "folder respectively.")
 
 
+# --------------------------------------------------------------------------- #
+# 5. scale
+# --------------------------------------------------------------------------- #
+# Claim: the same per-field walk runs whether there is one chain or six, and
+# a real chain found a bug the synthetic one never could.
+#
+# Left is the flagship demo exactly as it is everywhere else in this
+# documentation: one base document and two amendments. Right is the
+# real-world corpus at its actual shape, six independent chains of real
+# amendment sequences, drawn small enough that the reader counts them rather
+# than reads a claimed number.
+# --------------------------------------------------------------------------- #
+def scale(c: dict) -> str:
+    W, H = 1180, 460
+    o: list[str] = []
+
+    # Left: the flagship demo, one chain of three boxes.
+    lx = 64
+    o.append(text(lx, 44, "FLAGSHIP DEMO", size=10, fill=c["accent"],
+                  weight="700", spacing=1.6))
+    o.append(text(lx, 66, "1 chain · 3 documents", size=13, fill=c["muted"]))
+    names = ["base\nagreement", "first\namendment", "second\namendment"]
+    bw, bh, gap = 118, 68, 46
+    by = 108
+    for i, label in enumerate(names):
+        bx = lx + i * (bw + gap)
+        o.append(rect(bx, by, bw, bh, fill=c["panel"], stroke=c["panelrule"],
+                      rx=6))
+        for j, ln in enumerate(label.split("\n")):
+            o.append(text(bx + bw / 2, by + 30 + j * 18, ln, size=12.5,
+                          fill=c["ink"], anchor="middle"))
+        if i > 0:
+            ax = bx - gap
+            o.append(arrow(bx - 2, by + bh / 2, ax + bw + 2, by + bh / 2,
+                           stroke=c["accent"], sw=1.6))
+    o.append(text(lx, by + bh + 40,
+                  "one base document, two amendments, both declaring what",
+                  size=12.5, fill=c["muted"]))
+    o.append(text(lx, by + bh + 60,
+                  "they amend", size=12.5, fill=c["muted"]))
+
+    # A vertical rule between the two panels.
+    midx = 588
+    o.append(line(midx, 30, midx, H - 30, stroke=c["rule"], dash="5 5"))
+
+    # Right: the real-world corpus, six chains, drawn to their real length.
+    rx0 = 636
+    o.append(text(rx0, 44, "REAL-WORLD CORPUS", size=10, fill=c["accent"],
+                  weight="700", spacing=1.6))
+    o.append(text(rx0, 66, "6 chains · 19 documents", size=13, fill=c["muted"]))
+
+    chains = [
+        ("glu-mobile", 4), ("netgear-ingram", 3), ("federated-services", 3),
+        ("pcquote-cobranding", 3), ("bellring-manufacturing", 4),
+        ("neon-distributor", 2),
+    ]
+    sbw, sbh, sgap = 26, 20, 8
+    ry0, rdy = 100, 42
+    for i, (name, n) in enumerate(chains):
+        ry = ry0 + i * rdy
+        for j in range(n):
+            sx = rx0 + j * (sbw + sgap)
+            fill = c["accent"] if j == 0 else c["panel"]
+            stroke = c["accent"] if j == 0 else c["panelrule"]
+            o.append(rect(sx, ry, sbw, sbh, fill=fill, stroke=stroke, rx=3,
+                          opacity=0.85 if j == 0 else 1))
+            if j > 0:
+                mx = sx - sgap
+                o.append(line(sx - 1, ry + sbh / 2, mx + sbw + 1, ry + sbh / 2,
+                              stroke=c["subtle"]))
+        label_x = rx0 + n * (sbw + sgap) + 8
+        o.append(text(label_x, ry + sbh / 2 + 4, f"{name} · {n}", size=12,
+                      fill=c["muted"], mono=True))
+
+    o.append(text(rx0, ry0 + len(chains) * rdy + 16,
+                  "each chain is independent. none reference each other",
+                  size=12.5, fill=c["muted"]))
+
+    # The shared claim, spanning both panels, below everything above it.
+    ruley = 386
+    o.append(line(lx, ruley, W - 64, ruley, stroke=c["rule"]))
+    o.append(text(lx, ruley + 26,
+                  "Same walk, six independent chains instead of one. A real "
+                  "chain caught a bug the synthetic one never could: a party",
+                  size=12.5, fill=c["ink"]))
+    o.append(text(lx, ruley + 46,
+                  "name with a slash in it broke the graph build for every "
+                  "document processed after it.", size=12.5, fill=c["ink"]))
+
+    return svg(W, H, "".join(o),
+               title="The same mechanism, run at nineteen times the scale",
+               desc="Two panels side by side. On the left, the flagship "
+                    "demo's single chain of three documents. On the right, "
+                    "the real-world corpus's six independent chains totalling "
+                    "nineteen documents, each drawn to its real length. A "
+                    "caption notes that a real amendment chain caught a bug "
+                    "the synthetic demo never could.")
+
+
 FIGURES = {
     "evidence-chain": evidence_chain,
     "domain-layers": domain_layers,
     "retrieval-modes": retrieval_modes,
     "architecture": architecture,
+    "scale": scale,
 }
 
 

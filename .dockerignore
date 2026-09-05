@@ -16,7 +16,10 @@ web/node_modules/
 web/dist/
 
 # --- development and authoring material -------------------------------------
-docs/
+# docs/ ships in the image (Dockerfile COPY): a deployed container should be
+# able to answer "what does this button do" from its own filesystem, and the
+# example corpora it documents already ship the same way. Everything else
+# here stays authoring-only.
 tests/
 paper/
 deck/

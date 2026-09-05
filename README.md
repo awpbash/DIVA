@@ -61,6 +61,29 @@ involved.
 
 ![Three money fields, each showing its current value with the document that set it, and the earlier value struck through underneath. The licence fee is SGD 61,500 from the first amendment, with SGD 48,000 struck through. The source clause is quoted and highlighted on the page beside it.](docs/images/knowledge-supersedence.png)
 
+### The same mechanism, at nineteen times the scale
+
+The three documents above are small and hand-built on purpose, so the failure
+they demonstrate is easy to see. A second corpus ships alongside it for
+harder proof: nineteen real contracts pulled from public SEC filings, six
+independent amendment chains instead of one, licensed and sourced in
+[`examples/real_world/`](examples/real_world/README.md).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/scale-dark.svg">
+  <img alt="Two panels side by side. On the left, the flagship demo's single chain of three documents. On the right, the real-world corpus's six independent chains totalling nineteen documents, each drawn to its real length. A caption notes that a real amendment chain caught a bug the synthetic demo never could." src="docs/diagrams/scale-light.svg">
+</picture>
+
+Real legal drafting found something the synthetic corpus never could. One
+contract names a party "Glu Mobile Inc. f/k/a Sorrent" (f/k/a is legal
+shorthand for "formerly known as", a common way a contract refers to a
+company that changed its name mid-relationship). The slash in that name
+broke the internal database record id for every document processed after it.
+Fixed, and covered by a regression test. The same chain, asked a real
+question at the same confidence and citation level as the walkthrough above:
+
+![An answer quoting the governing law clause of the Glu Mobile wireless content license word for word, with its citation open beside it, the exact clause highlighted in amber on the scanned SEC filing page.](docs/images/real-world-citation.png)
+
 ## What you get
 
 | | |
@@ -345,6 +368,38 @@ tokens in total.
 Everything else, rebuilding the knowledge base, scoring extraction, running
 the tests, is free and calls no model. That is deliberate: you should be able
 to verify a change without a funded API key.
+
+## Complexity, roughly
+
+Not a formal analysis, this is a pipeline rather than an algorithm, but a
+rough sense of where time, disk and money go, measured against the two
+corpora in this repository rather than guessed.
+
+| | Time | Disk | Tokens |
+| --- | --- | --- | --- |
+| Reading one document, once | About half a minute | 6 to 7 MB. Rendered page images and their embeddings dominate, both scale with page count, not chain length | A few thousand for a short synthetic contract, tens of thousands for a real one |
+| Answering one question | A few seconds to under a minute, depending how many tool calls it takes | Nothing kept beyond the chat thread | Small change, several tool calls plus one answer. Never cached, every question is new work |
+| Rebuilding the knowledge graph | About three minutes across all 22 documents in this repository, measured | Nothing extra, it reads what ingestion already wrote | Free once every block has been embedded at least once. The graph structure itself never calls a model |
+
+Reading and extraction are per document and never repeat once cached, and the
+supersedence walk at query time is one backward pass along a single chain,
+not a scan of the whole corpus, so six independent chains cost six times one
+chain, not thirty-six. The one place that is not strictly linear: the
+knowledge graph rebuild that follows each document's extraction rebuilds the
+graph from every document ingested so far, not only the new one, so loading a
+large batch back to back does somewhat more total rebuild work than the same
+documents loaded one at a time on separate days. The graph-structure part of
+that work is always free and fast. Its embedding step reads from a disk
+cache keyed by exact text, so a rebuild triggered by, say, losing the
+database container is genuinely free, but the very first rebuild after a
+corpus grows still has to embed whatever it has not embedded before, which is
+the normal per-document reading cost, not an extra one.
+
+For the two corpora that ship here: the 3-document flagship demo came to
+about 27,000 tokens in total, the 19-document real-world set to about 1.5
+million, in line with real contracts running many times longer than the
+synthetic ones. All 22 documents together hold 147 MB on disk, about 6.7 MB
+per document on average, measured rather than estimated.
 
 ---
 

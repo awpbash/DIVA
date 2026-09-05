@@ -16,6 +16,15 @@ document titles and counterparties into every copy of the repository.
 | `review-field.png` | Verifying a field against the clause it came from |
 | `knowledge-supersedence.png` | Current values with their superseded history, and the document that set each one |
 | `admin-documents.png` | The admin dashboard after the sample corpus is loaded |
+| `real-world-citation.png` | The one deliberate exception, see below |
+
+**One deliberate exception.** `real-world-citation.png` is captured against
+[`examples/real_world/`](../../examples/real_world) instead. That corpus is
+not a customer deployment, it is public U.S. SEC filings redistributed under
+CC BY 4.0, the same basis the [CUAD dataset](../../examples/real_world/README.md)
+itself redistributes them on, so showing it carries no one's private
+information anywhere. Every other file in this folder keeps to the rule
+above.
 
 ## Recapturing them
 

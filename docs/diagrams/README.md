@@ -9,6 +9,7 @@ not drawn by hand. Change the source, re-run, commit both.
 | `domain-layers` | A new document type is four files you write. The engine is the same code either way | `make_diagrams.py` |
 | `retrieval-modes` | The question decides the machinery. Money is added up in Python, never by a language model | `make_diagrams.py` |
 | `architecture` | The whole application is one container, talking to exactly three things outside itself | `make_diagrams.py` |
+| `scale` | The same per-field walk runs whether there is one chain or six, and a real chain caught a bug the synthetic one never could | `make_diagrams.py` |
 | `supersedence.gif` | "Current" is resolved per field, by walking backwards until a document sets that field | `supersedence_anim.py` |
 
 ## Regenerating
