@@ -256,6 +256,7 @@ can trust what they are approving.
 | [Troubleshooting](docs/troubleshooting.md) | Symptom, cause, fix |
 | [Deployment](docs/DEPLOYMENT.md) | Putting it on a server |
 | [Examples](examples/README.md) | The sample corpus and ten questions with their answers |
+| [Real-world corpus](examples/real_world/README.md) | Nineteen real contracts, six real amendment chains, for testing at a bigger and messier scale |
 
 The full index, including the deeper engine documentation, is in
 [`docs/`](docs/README.md).
@@ -357,8 +358,8 @@ to verify a change without a funded API key.
 | `configs/` | The whole domain definition: analyzers, ontology, packs, field schemas, prompts |
 | `api/` | FastAPI backend: retrieval agent, auth, review, knowledge, admin |
 | `web/` | React workspace |
-| `scripts/` | Operational commands: `setup`, `accounts`, `rebuild_kb`, `reconcile_kb`, `ask` |
-| `examples/` | The sample corpus and its expected answers |
+| `scripts/` | Operational commands: `setup`, `accounts`, `rebuild_kb`, `reconcile_kb`, `ask`, `load_real_world_corpus` |
+| `examples/` | The sample corpus and its expected answers, plus a real-world corpus for bigger-scale testing |
 | `eval/` | The extraction scorer |
 | `tests/` | Fast, offline, no model calls |
 | `docs/` | Documentation, and the source for every figure in it |

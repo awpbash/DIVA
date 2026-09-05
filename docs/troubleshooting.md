@@ -206,6 +206,7 @@ Batch them, and fire independent queries in one concurrent wave.
 | Run scripts as modules | `python -m scripts.rebuild_kb`, never `python scripts/rebuild_kb.py` |
 | Do not use `python -c` with variables inside double quotes in PowerShell | It mangles SQL and YAML. Write a file instead |
 | PowerShell 5.1 has no `&&` or `\|\|` | Use `;` with an `if ($?)` guard |
+| A second process against `storage/app.db` fails with "unable to open database file" while the app container is up | Docker Desktop's Windows bind mount does not reliably support the shared-memory locking SQLite's WAL mode needs across two separate processes. Stop the app first (`docker compose stop app`), run the one-off command with `docker compose run --rm app ...`, then start the app again |
 
 ## YAML
 

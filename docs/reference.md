@@ -136,6 +136,7 @@ Run everything as a module: `python -m scripts.setup`, never
 | `python -m eval.extraction.score --run NAME` | Free | Grade extraction against your human-verified gold set |
 | `python -m eval.extraction.score --dump` | Free | Per-document field extractions, for seeding a private gold set |
 | `python -m scripts.ask "<question>"` | **Paid** | One question at the live chat endpoint. `--role`, `--doc`, `--retrieval-only` |
+| `python -m scripts.load_real_world_corpus` | **Paid** | Load the 19-document real-world corpus, [`examples/real_world/`](../examples/real_world/README.md). About 1.5M tokens the first time, free on any re-run |
 
 ## 03 · HTTP API
 

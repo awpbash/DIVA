@@ -11,6 +11,12 @@ published. `pyproject.toml`, `api/__init__.py` and `web/package.json` all carry
 
 ### Added
 
+- `examples/real_world/`: 19 real contracts across 6 real amendment chains,
+  sourced from the CUAD dataset (public SEC EDGAR filings, CC-BY-4.0
+  curation, see `NOTICE`). Opt-in via `python -m scripts.load_real_world_corpus`,
+  separate from and does not touch the flagship 3-document demo. Built to
+  stress-test the same amendment-chain walk the demo proves, at real-world
+  scale and with genuine legal drafting instead of synthetic text.
 - A documentation set rather than one long README: a getting-started
   walkthrough, a concepts page explaining why the design is shaped this way, a
   guide to teaching it your own documents, an architecture map, a settings and
@@ -70,6 +76,19 @@ published. `pyproject.toml`, `api/__init__.py` and `web/package.json` all carry
 
 ### Fixed
 
+- **A party name containing a slash broke the knowledge graph build for
+  every document processed afterward, not just that one.** A real contract's
+  party is commonly named "X f/k/a Y" ("formerly known as") or "d/b/a"
+  ("doing business as"). The literal slash landed straight in that party's
+  internal database record id, which Cosmos DB rejects with a 400, so every
+  later `build_km` call in the same process failed the same way. Found while
+  loading `examples/real_world/`, a synthetic corpus never contains this kind
+  of name. `pipeline/kb/writers.py`'s `_canonical_key` now strips all
+  punctuation from a party's key, not only commas and periods.
+- **The Docker image never copied `examples/` into itself.** Every
+  containerized deployment's Demo button (`api/main.py`'s
+  `_load_demo_corpus`) silently did nothing, since the files it looks for
+  were never in the image. Added to the `Dockerfile`.
 - **A verifier's correction did not move the current value until somebody ran
   a full rebuild.** "Not Stated" is how a person says a document does not state
   a field, which hands the current value back to an earlier document in the

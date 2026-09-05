@@ -11,6 +11,7 @@ Start where your question is.
 | Look up a setting, a command, or an endpoint | [Reference](reference.md) |
 | Fix something that is broken | [Troubleshooting](troubleshooting.md) |
 | Put it on a server | [Deployment](DEPLOYMENT.md) |
+| Test it against real contracts, not just the demo | [Real-world corpus](../examples/real_world/README.md) |
 
 Deeper material, written for people changing the engine rather than using it:
 

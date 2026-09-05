@@ -306,3 +306,7 @@ To spend less while you are trying things out, set `READER=rapidocr` in `.env`
 (it is the default). It runs optical character recognition on your own machine
 and only pays for a correction pass, instead of sending every page to a cloud
 document service.
+
+Once this walkthrough makes sense, [`examples/real_world/`](../examples/real_world/README.md)
+is the same test at real-world scale: 19 real contracts across 6 real
+amendment chains, instead of 3 synthetic ones.
