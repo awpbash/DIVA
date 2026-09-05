@@ -1,16 +1,19 @@
-# Screenshots
+# Documentation images
 
-Product screenshots used by the README and the documentation pages.
+Product screenshots and branding assets used by the README and the documentation
+pages.
 
-Everything here was captured against the synthetic sample corpus in
-[`examples/corpus/`](../../examples/corpus): fictional companies, invented
-numbers, ordinary boilerplate. That is the rule, and it is the only reason
-these are safe to publish. A screenshot of this product shows whatever corpus
-is loaded, so one taken against a real deployment carries that customer's
-document titles and counterparties into every copy of the repository.
+The product screenshots here were captured against the synthetic sample corpus
+in [`examples/corpus/`](../../examples/corpus): fictional companies, invented
+numbers, ordinary boilerplate. That is the rule, and it is the reason they are
+safe to publish. A screenshot of this product shows whatever corpus is loaded,
+so one taken against a real deployment carries that customer's document titles
+and counterparties into every copy of the repository.
 
 | File | Shows |
 | --- | --- |
+| `diva-logo.png` | The primary light-background DIVA lockup with a friendly robot, document, and full name |
+| `diva-logo-dark.png` | The dark-background DIVA lockup with white line art and the full name |
 | `chat-start.png` | The cold-start screen, with the kinds of question the two retrieval modes handle |
 | `chat-citation.png` | An answer, its citation clicked, and the source clause highlighted on the page |
 | `review-field.png` | Verifying a field against the clause it came from |
