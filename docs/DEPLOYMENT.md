@@ -1,15 +1,15 @@
-# Deploying
+# Deployment
 
-This is one container and one database. If you can run Docker on a small server,
-you can run this. What follows is the whole path: what to decide first, how to
-put it up, what to protect it with, and what to back up.
+This guide covers the path from a local compose stack to a small production
+deployment: choosing the model and knowledge-store endpoints, configuring
+access, starting the application, and protecting its persistent data.
 
 Read [SECURITY.md](../SECURITY.md) first. The short version is repeated below
 because it changes what a safe deployment looks like.
 
 ---
 
-## Decide these four things first
+## Before you deploy
 
 **1. Where the model calls go.** Extraction and chat send document text and page
 images to whatever endpoint you configure in `OPENAI_BASE_URL`. If your documents
@@ -34,11 +34,12 @@ Attach a persistent volume at `/app/storage`. If your host has no persistent
 disk, set the Azure Blob variables and the app mirrors the directory to blob
 storage and restores it at boot.
 
-**4. What sits in front.** See the next section. This is the decision people skip.
+**4. What sits in front.** Choose the network boundary and authentication layer
+before making the application reachable by other people.
 
 ---
 
-## The posture problem, stated plainly
+## Authentication and network access
 
 **Sign-in is passwordless.** Typing an email address that has an account signs
 you in as that account. No password, no second factor, no identity provider.
@@ -54,17 +55,16 @@ You have three reasonable options:
 | --- | --- | --- |
 | **Private network only** | The app is reachable from your office network or a VPN and nowhere else | Simplest, and enough for most internal use |
 | **Reverse proxy with real auth** | A proxy in front terminates TLS and authenticates before forwarding | The normal production answer |
-| **`CHAT_API_KEY`** | Every request must carry a shared secret | A blunt lock. It keeps strangers out. It does not tell users apart, so it is not a substitute for the two above |
+| **`CHAT_API_KEY`** | Every request must carry a shared secret | Useful for basic network gating. It does not identify users, so it complements rather than replaces the options above |
 
-What does *not* need replacing is the access control **behind** the login. Roles
-and per-field sensitivity are enforced on the server before data leaves the API,
-so a user without clearance never receives the confidential value. Swapping the
-login does not disturb any of it: `api/routes/auth.py` mints the session and
-`api/appdb.py` stores accounts, and the rules live elsewhere.
+Access control **behind** the login remains server-side. Roles and per-field
+sensitivity are applied before data leaves the API, while the session and
+account implementation can be placed behind the authentication layer selected
+for the deployment.
 
 ---
 
-## Putting it up
+## Start a production instance
 
 On a server with Docker installed:
 
@@ -134,7 +134,7 @@ frozen for thirty seconds.
 
 ---
 
-## First run
+## Configure the first account
 
 Sign in as the address in `BOOTSTRAP_ADMIN_EMAIL`. That account is created on the
 very first boot, only when there are no accounts at all, so it cannot overwrite
@@ -177,7 +177,7 @@ SQLite database.
 
 ```bash
 docker compose -f docker-compose.prod.yml stop app
-tar czf "verbatim-$(date +%F).tgz" storage/
+tar czf "diva-$(date +%F).tgz" storage/
 docker compose -f docker-compose.prod.yml start app
 ```
 
@@ -272,7 +272,7 @@ If your host has **no** persistent disk, two variables cover it:
 
 ---
 
-## When something is wrong
+## Troubleshooting
 
 | Symptom | Look at |
 | --- | --- |

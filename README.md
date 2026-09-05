@@ -247,96 +247,24 @@ lookups, comparisons, and aggregations.
 The complete documentation index, including the deeper engine documentation,
 is available in [`docs/`](docs/README.md).
 
-## Configuration
+## Operate and extend DIVA
 
-DIVA keeps environment-specific values outside the image, so the same
-application can be used on a laptop, a small cloud host, or a private tenant.
-See [`.env.example`](.env.example) for the annotated environment and
-[Reference](docs/reference.md) for the full configuration tables.
+Environment-specific settings live outside the image, so the same application
+can run on a laptop, a small cloud host, or a private tenant. The annotated
+[`.env.example`](.env.example), [Reference](docs/reference.md), and
+[Deployment](docs/DEPLOYMENT.md) guide the configuration, operation, and
+backup of an instance. Before sharing an instance with other people, review
+[SECURITY.md](SECURITY.md).
 
-| Setting | Environment variable | Description |
-| --- | --- | --- |
-| Model endpoint | `OPENAI_BASE_URL` | Leave unset for OpenAI or point it at any OpenAI-compatible endpoint, including an endpoint inside a private network. |
-| Document reader | `READER` | Select `rapidocr` for local OCR with a correction pass, or `cu` for Azure Content Understanding with cached results. |
-| Vector search | `COSMOS_VECTOR_MODE` | Use `client` for exact in-memory development search or `native` for the database index. |
-| Domain | `VERBATIM_DOMAIN` | Select the document schema served by the instance. |
-| Instance name | `APP_NAME` | Set the name and tagline presented by the browser workspace. |
-| First administrator | `BOOTSTRAP_ADMIN_EMAIL` | Choose the account created during first boot. |
+The repository is intended to be adapted. Domain packs, documentation,
+examples, tests, interface improvements, bug reports, and feature ideas are
+all useful contributions. [CONTRIBUTING.md](CONTRIBUTING.md) explains the
+development workflow, while the [Code of Conduct](CODE_OF_CONDUCT.md) sets the
+standard for working together.
 
-Documents are sent to the model endpoint configured for the deployment. An
-endpoint can be hosted inside the same network when document content must stay
-within a private environment.
-
-## Security and access
-
-DIVA resolves sessions, roles, and sensitivity labels on the server. The
-client receives only the values that the current session is permitted to
-access, and the review workspace can be made available to designated
-verifiers independently of the general access role.
-
-| Role | Access |
-| --- | --- |
-| `admin` | Full application access, including review, accounts, schema editing, uploads, and feedback. |
-| `confidential` | Chat, knowledge, and graph exploration, including values tagged as confidential. |
-| `default` | Chat with confidential values withheld by the server. |
-
-Before exposing an instance beyond a private development environment, review
-the deployment guidance in [SECURITY.md](SECURITY.md) and
-[Deployment](docs/DEPLOYMENT.md).
-
-## Evaluation and development
-
-The repository includes a deterministic extraction scorer that evaluates fields
-against a human-verified gold set, including the connection between each value
-and its evidence. Teams can create a domain-specific gold set with:
-
-```bash
-python -m eval.extraction.score --dump
-python -m eval.extraction.score --run NAME
-```
-
-The offline test and lint checks can be run together with the frontend build
-and test suite:
-
-```bash
-python -m pytest tests/
-python -m ruff check .
-cd web && pnpm run build && pnpm test
-```
-
-## Model usage and storage
-
-Model usage is concentrated in document reading, extraction, and question
-answering. Ingestion outputs are cached by stage, so re-running a completed
-document pipeline reuses the stored pages, text, evidence, and embeddings;
-knowledge graph reconstruction can likewise be performed from the local
-artifacts without repeating document reading.
-
-The included sample corpus contains three synthetic contracts for a compact
-walkthrough and a nineteen-document real-world corpus for larger-scale
-experimentation. Together they provide a practical reference for estimating
-page storage, embedding volume, and model usage for a new document domain.
-
-## Repository layout
-
-| Path | Purpose |
-| --- | --- |
-| `pipeline/extraction/` | Document reading, schema-first extraction, and evidence anchoring. |
-| `pipeline/kb/` | Knowledge construction, entity alignment, document relationships, and supersedence. |
-| `pipeline/storage.py` | Database access and persistence. |
-| `configs/` | Domain definitions, including analyzers, ontology, packs, field schemas, and prompts. |
-| `api/` | FastAPI backend for retrieval, authentication, review, knowledge, and administration. |
-| `web/` | React workspace. |
-| `scripts/` | Setup, account, ingestion, rebuilding, reconciliation, querying, and corpus commands. |
-| `examples/` | Synthetic and real-world corpora with walkthrough material. |
-| `eval/` | Extraction scoring tools. |
-| `tests/` | Fast offline tests. |
-| `docs/` | User, operator, and engine documentation, together with figure sources. |
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, domain
-configuration guidance, and checks used before a pull request is opened.
+The deeper source layout is documented in [`docs/`](docs/README.md), and the
+module-level guides under `pipeline/`, `api/`, `web/`, `configs/`, and `tests/`
+are the best starting point when changing a particular part of the system.
 
 ## Licence
 

@@ -145,4 +145,4 @@ costs $0, and the trust layer (validate) plus the whole knowledge-base build are
 free. That is also why `python -m scripts.rebuild_kb` can drop and repopulate
 the Cosmos container from `storage/` at no cost. Measured cost: about $1.13 per
 document on the RapidOCR reader path. See
-[Getting started](getting-started.md#what-this-costs) for the breakdown.
+[Reference](reference.md#commands) for the command and usage breakdown.

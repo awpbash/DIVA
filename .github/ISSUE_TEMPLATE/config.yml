@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/awpbash/verbatim/security/advisories/new
+    url: https://github.com/awpbash/diva/security/advisories/new
     about: Report privately. Please do not open a public issue.
   - name: Question or idea
-    url: https://github.com/awpbash/verbatim/discussions
+    url: https://github.com/awpbash/diva/discussions
     about: For anything that is not a bug report or a concrete feature request.

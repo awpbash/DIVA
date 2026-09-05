@@ -1,7 +1,8 @@
 # Architecture
 
-What the pieces are, what talks to what, and where state actually lives. Read
-[Concepts](concepts.md) first if you want to know why, rather than what.
+This guide describes the main components, their connections, and where DIVA
+stores state. Read [Concepts](concepts.md) first if you want the design
+reasons behind this structure.
 
 ## 01 · One image, three layers
 
@@ -39,18 +40,17 @@ flowchart TB
     API --> DISK
 ```
 
-Two rules about this picture are load-bearing.
+Two relationships in this picture are especially important.
 
-**Only `pipeline/store/` talks to the database.** Every query goes through it,
-including from the API. That is what makes the emulator and a real Cosmos
-account behave identically, and it is where the emulator's quirks are
-contained.
+**`pipeline/store/` owns database access.** Queries go through this layer,
+including those initiated by the API. This keeps the emulator and a real
+Cosmos account behind the same interface and keeps storage-specific behavior in
+one place.
 
-**The database is a projection, not a record.** Everything in it can be
-rebuilt from `storage/` for free, with no model calls, by
-`python -m scripts.rebuild_kb`. That is why ontology changes are cheap: you
-change the shape, you rebuild, you look. If you lose the database container
-entirely you have lost nothing.
+**The database is a projection rather than the source archive.** Its contents
+can be rebuilt from `storage/` with `python -m scripts.rebuild_kb`, without
+re-reading documents. This makes ontology changes straightforward to inspect
+and gives operators a repeatable recovery path.
 
 ## 02 · Where state lives
 
@@ -116,7 +116,7 @@ sequenceDiagram
     U->>U: highlight the paragraph in the PDF
 ```
 
-Three things about this loop are not negotiable.
+Three properties of this loop guide the implementation.
 
 **Clearance is applied at the source.** The store filters by the caller's role
 before results reach the agent. A user without clearance never receives the
@@ -151,7 +151,9 @@ The tool surface and how the planner routes to it are in
 | `scripts/` | Operational commands. See [Reference](reference.md#commands) |
 | `eval/` | The extraction scorer |
 
-Each of those directories has its own README with a per-file table.
+The user-facing guides in these areas are indexed from
+[`docs/README.md`](README.md); use them alongside the module map when moving
+between the application layers.
 
 ## 06 · Choices worth knowing about
 

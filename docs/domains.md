@@ -1,8 +1,10 @@
-# Teaching it your documents
+# Define a document domain
 
-The engine has no idea what a contract is. Everything that knows about your
-kind of document lives in four configuration files. Adding a document type
-means writing those four files. It does not mean writing Python.
+DIVA keeps the reusable document intelligence engine separate from the
+vocabulary of a particular document collection. A domain describes its
+document types, graph structure, field schema, and evidence rules through
+configuration, so contributors can adapt the application without changing
+the core engine.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/domain-layers-dark.svg">
@@ -10,16 +12,19 @@ means writing those four files. It does not mean writing Python.
 </picture>
 
 A worked domain ships in the repository. `commercial_agreement` covers
-licence, supply and non-disclosure agreements in 22 fields, and it is the
-thing to copy. Read it alongside this page.
+licence, supply, and non-disclosure agreements in 22 fields, and is a useful
+starting point for a new domain.
 
-**Or use the setup wizard now.** Its "Build from scratch" path takes a
-one-sentence description, drafts a first field list with AI, and lets you
-edit that list in the browser instead of writing YAML by hand. Two switches
-turn on document-chain tracking and cross-document party matching, and it
-writes all four files below for you. It is the faster way to get a working
-first pass; this page is for understanding what it wrote, or for shaping a
-domain the wizard's two switches do not cover.
+There are two good ways to begin:
+
+| Starting point | Use it when |
+| --- | --- |
+| **Setup wizard** | You want DIVA to draft a first field list from a description, then refine it in the browser |
+| **Configuration files** | You want to understand or control the analyzer, ontology, graph mappings, and field schema directly |
+
+The wizard can also enable document-chain tracking and cross-document party
+matching. This page explains the files it creates and the additional options
+available when a domain needs more detailed behavior.
 
 ## 01 · The four files
 
@@ -276,7 +281,9 @@ set is used.
 `relations` maps the words your documents use onto the graph edges. If your
 world calls it a "variation" rather than an "amendment", say so here.
 
-`field_roles` is the one most people miss, and getting it wrong fails quietly.
+`field_roles` connects the document-family model to the fields in your schema.
+It is worth checking carefully because an incomplete mapping can leave a
+relationship unresolved without producing an obvious configuration error.
 
 The chain walk needs six things from every document: what kind of document it
 is, its position in a sequence, which word declares the relationship, the date
@@ -290,12 +297,10 @@ the example above, `relationship_type` maps to `document_type` because this
 domain declares the relationship by what it CALLS the document, matching the
 `relations` keys above it.
 
-Get this wrong and nothing errors. The lookup returns nothing, every document
-ties on an undated sentinel, and "the latest document wins" quietly becomes
-"the last document id alphabetically wins". That looks exactly like a corpus
-with no amendments in it. `python -m scripts.setup --check` reports any role
-pointing at a field your view does not declare, and a role naming a field that
-does not exist fails the config build outright.
+The mapping determines how DIVA orders and connects the documents in a family.
+`python -m scripts.setup --check` reports a role pointing at a field your view
+does not declare, while a role naming a field that does not exist fails the
+configuration build directly.
 
 `ancillary_types` names document kinds that state values but are never a link
 in the chain, so an exhibit never becomes the base that an amendment resolves
@@ -356,18 +361,18 @@ when they are missing or wrong.
 | File | What it does | If you skip it |
 | --- | --- | --- |
 | `configs/prompts/field_extract.<domain>.md` | The extraction persona: the guidance that tells the model what your documents look like and how to read them | A generic persona is used. It works, and it is less accurate than one written for your corpus |
-| `configs/policy/sensitivity.<domain>.yaml` | Which fact labels count as confidential, and which roles are denied them | **Redaction does nothing.** The fallback file names no labels on purpose, because a wrong label list looks like protection and provides none. `setup --check` reports a class naming a label your pack does not declare |
+| `configs/policy/sensitivity.<domain>.yaml` | Which fact labels count as confidential, and which roles are denied them | The fallback file names no labels, so define this file when your domain uses restricted fields. `setup --check` reports a class naming a label your pack does not declare |
 | `configs/sections.yaml` | The heading grammar used to split documents into sections | The built-in legal-drafting patterns are used, which suit contracts and may not suit your genre |
 
 The prompt file resolves the same way everywhere: `<name>.<domain>.md` if you
 wrote one, otherwise the generic `<name>.md`. The chat prompts follow the same
-rule, as `chat_planner`, `chat_agent` and `chat_synth`. Overriding one replaces
-it wholesale, deliberately: filling your nouns into a shared prompt produces a
-prompt that is worse in every domain.
+rule for `chat_planner`, `chat_agent`, and `chat_synth`. An override replaces
+the selected prompt as a whole, so domain-specific guidance stays together and
+can be reviewed as one contribution.
 
-## 08 · Check it before you spend anything
+## 08 · Validate the domain before processing documents
 
-Three free checks, in the order worth running them.
+Run these local checks before processing a larger document set.
 
 ```bash
 python -m scripts.setup --check      # does the domain resolve and compile
@@ -375,26 +380,25 @@ python -m pytest tests/ -q           # the contract tests run over every shipped
 python -m scripts.render_ontology    # a readable page of the graph you just declared
 ```
 
-The contract tests are the ones that matter here. `tests/extraction/
-test_pack_contract.py`, `tests/kb/test_opsview_contract.py` and
-`tests/extraction/test_ontology_contract.py` are parametrised over every
-domain your checkout ships, so adding your files puts them under the same
-gates as the shipped example. They will tell you, before you pay for a single
-model call, that a field points at a label the pack never declares, or that a
-party role is spelled differently in two files.
+The contract tests are parametrised over every domain your checkout ships.
+Adding a domain therefore puts it under the same checks as the shipped example.
+They catch mismatches such as a field pointing at a label the pack does not
+declare, or a party role being spelled differently in two files, before model
+processing begins.
 
-Then ingest one document and look at the result in the Review tab. One
-document tells you more about a schema than another day of writing YAML.
+Then ingest one representative document and inspect it in the Review tab. A
+small real example gives useful feedback about a schema before the domain is
+applied to a larger collection.
 
-## 09 · Rules that hold whatever you are modelling
+## 09 · Authoring guidelines
 
 | | |
 | --- | --- |
-| **No per-document special cases.** | If a document needs its own rule, the schema is missing a field or the pack is missing a mapping. A heuristic for one difficult document is how a system stops scaling |
-| **Extend, do not fork.** | Inherit `_universal` and `_base` and declare only your differences. A forked base drifts and stops receiving fixes |
-| **Quote bare `Yes` and `No` in YAML.** | Unquoted, they parse as booleans and your enum silently stops matching |
-| **A blank is not nothing.** | It means "not stated" in a base document and "unchanged" in an amendment. Get the document family policy right or every current value is wrong |
-| **New fields need a re-extraction.** | The field cache is presence-based. After a schema change, re-run extraction with `force=True` or you will grade stale results and believe them |
+| **Prefer reusable configuration.** | If a document needs its own rule, consider whether the schema or pack needs a field or mapping that can serve the wider domain |
+| **Extend shared configuration.** | Inherit `_universal` and `_base`, then declare only the differences that belong to your domain |
+| **Quote bare `Yes` and `No` in YAML.** | Unquoted, they parse as booleans and your enum may not match the intended values |
+| **Define blank-value behavior.** | A blank can mean "not stated" in a base document and "unchanged" in an amendment, so document-family policy should make that distinction explicit |
+| **Re-extract after schema changes.** | The field cache is presence-based. Run extraction with `force=True` after changing fields so the results reflect the new schema |
 
 ## 10 · Two shipped domains, and why there are two
 
@@ -403,11 +407,9 @@ project it was extracted from runs a different domain entirely, with a
 physical equipment tier, per-unit tariffs, technical measurements, and a
 completely different party vocabulary.
 
-That is not an accident of history, it is the test. The two domains are
-deliberately different in shape rather than just in naming, so "this is
-configurable" is a claim the test suite checks on every commit rather than a
-sentence in a README. If a change quietly hardcodes one domain's assumptions
-into the engine, the other domain stops compiling.
+The two domains are deliberately different in shape rather than only in
+naming. Together they give contributors a concrete way to verify that shared
+engine changes remain adaptable across document families.
 
 ## Further reading
 

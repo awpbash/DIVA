@@ -1,7 +1,8 @@
 # Troubleshooting
 
-Symptom first. Each entry says what is actually happening, because the fix
-makes no sense otherwise.
+Start with the symptom that matches your instance. Each entry explains what is
+happening before suggesting a fix, so the same pattern is easier to recognize
+the next time it appears.
 
 Before anything else:
 
@@ -28,11 +29,11 @@ If it is running and still unreachable, check `COSMOS_URI` and `COSMOS_KEY` in
 `.env`. From inside a container the address is the service name, not
 `localhost`.
 
-### The app refuses to start and says it will not guess a domain
+### The app asks me to select a domain
 
 More than one pack is present under `configs/packs/` and nothing declares
-which one this instance serves. That is deliberate. Guessing means extracting
-your entire corpus against the wrong schema, which is expensive and silent.
+which one this instance serves. DIVA asks for an explicit selection so the
+active schema remains aligned with the document collection.
 
 Set `VERBATIM_DOMAIN` in the environment, or `domain:` in
 `configs/pipeline.yaml`. See [Domains](domains.md#activate).
@@ -59,11 +60,11 @@ python -m scripts.accounts list
 
 ## The database
 
-### Everything vanished after a Docker restart
+### The emulator data is missing after a Docker restart
 
-Emulator data does not survive container recreation. This is normal and it
-costs nothing to fix, because the database is a projection rather than a
-record:
+Emulator data does not survive container recreation. This is expected for the
+development stack because the database is a projection rather than the source
+archive:
 
 ```bash
 docker compose up -d --force-recreate cosmos
@@ -73,10 +74,10 @@ python -m scripts.rebuild_kb
 That restores everything from `storage/`, embeddings included, with no model
 calls.
 
-### The emulator will not start and loops on an internal database failure
+### The emulator loops after an internal database failure
 
-Its internal Postgres has been wedged by a hard crash. Recovery is the same
-two commands as above. There is nothing to salvage from the container.
+Its internal Postgres needs recovery after an unclean shutdown. Use the same
+two commands as above to recreate the emulator and rebuild its projection.
 
 ### Queries return nothing but the documents are definitely loaded
 
@@ -105,21 +106,20 @@ The field extraction cache is presence-based. If a result file exists for a
 document, it is returned as it is, regardless of whether the text or the
 schema has changed since.
 
-That is what makes re-running free, and it is also the trap. After a schema
-change or a reader change, force re-extraction or you will grade stale output
-and believe it.
+That is what makes re-running free. After a schema change or reader change,
+force re-extraction so the cached output reflects the current configuration.
 
-### An amendment shows a value for a field it never mentions
+### An amendment shows a value for a field it does not establish
 
 A document that changes one clause often names several others in passing
 ("the minimum commitment and the audit right are unchanged"), and the model
 sometimes reads a nearby figure into one of them. Because the newest document
 that states a field wins, one invented value can bury the real one.
 
-This is what review is for, and it is quick, because the evidence beside the
-value is visibly about something else. Correct the field to `Not Stated`. That
-records "this document does not state this" rather than a value, so the walk
-falls through to the last document that really did state it.
+Review makes this easy to investigate because the evidence beside the value is
+visible in context. Correct the field to `Not Stated` when the document does
+not establish it. That records the document's silence and lets the walk fall
+through to the last document that stated the field.
 
 Two levers reduce how often it happens. Write field hints that say what shape
 the value takes, not just what it means ("a money amount with its currency,
@@ -148,8 +148,7 @@ rectangles to draw. Re-run validation for it and rebuild. Both are free.
 
 ### The citation opens the right page but highlights the wrong paragraph
 
-This is the most serious class of bug in the project, because the entire
-verification workflow rests on the anchor being right. Re-anchor the stored
+Evidence geometry is central to the verification workflow. Re-anchor the stored
 rectangles from their cited blocks:
 
 ```bash
@@ -161,14 +160,14 @@ Then check in a **new chat thread**. See the next entry for why.
 
 ## The application
 
-### I fixed a citation bug and an old conversation still shows the old highlight
+### I corrected a citation and an old conversation still shows the old highlight
 
 Chat threads are stored server-side with the citation geometry they had when
 they were created. An old thread replays its cached coordinates and will keep
 showing the old behaviour forever.
 
-After any citation or bounding-box fix, test in a brand new thread. This has
-cost real debugging time more than once.
+After any citation or bounding-box change, test in a new thread so it uses the
+updated citation geometry.
 
 ### I changed the frontend and nothing changed in the browser
 
@@ -179,8 +178,8 @@ a restart picks up backend changes, but a frontend change needs a rebuild:
 docker compose build app && docker compose up -d app
 ```
 
-More generally: a running container can be older than your working tree.
-Check that before concluding you have found a code bug.
+More generally, a running container can be older than your working tree. Check
+the image timestamp and rebuild state before investigating the source further.
 
 ### The frontend build fails with a parse error at 1:1
 
@@ -241,13 +240,13 @@ free and call no model at all.
 No, by design. One deployment serves one domain, resolved once at startup. Run
 a second instance for a second document type.
 
-**Is the passwordless sign-in a bug?**
-No, it is a deliberate demo-grade default, and it is wrong for a shared
-network. An email address is the credential. Put real authentication in front
-of it before you expose an instance. [SECURITY.md](../SECURITY.md) and
-[Deployment](DEPLOYMENT.md) cover the options.
+**Why is sign-in passwordless?**
+It is a deliberate default for local evaluation. An email address is the
+credential, so a shared deployment should put an authentication layer in front
+of the application. [SECURITY.md](../SECURITY.md) and
+[Deployment](DEPLOYMENT.md) cover the available options.
 
-**Something is still broken.**
+**I still need help.**
 Open an issue with the output of `python -m scripts.setup --check`, what you
 expected, and what happened. [CONTRIBUTING.md](../CONTRIBUTING.md) has the
 rest.

@@ -1,6 +1,8 @@
 # Reference
 
-Settings, commands and endpoints. Look things up here.
+Use this page as the compact reference for settings, commands, endpoints, and
+access roles. The annotated [`.env.example`](../.env.example) remains the best
+place to start when configuring a new instance.
 
 ## 01 · Settings
 
@@ -140,8 +142,9 @@ Run everything as a module: `python -m scripts.setup`, never
 
 ## 03 · HTTP API
 
-The application serves its own interactive documentation at `/docs`, generated
-from the code, which is the authoritative version. This is the map.
+The application serves interactive API documentation at `/docs`, generated from
+the code and authoritative for request and response details. The tables below
+provide the navigation map.
 
 Authentication is a session token in an `X-User-Token` header, minted by
 `POST /auth/login`. Roles are resolved server-side from the session. Clients
@@ -169,7 +172,7 @@ never send their own clearance.
 | `GET /evidence/{evidence_id}` | Page number, rectangles and snippet for one citation |
 | `POST /feedback`, `GET /feedback/mine` | Report an answer |
 
-### Cleared eyes: confidential and admin
+### Knowledge and graph access
 
 | | |
 | --- | --- |
@@ -203,7 +206,7 @@ never send their own clearance.
 | `GET /registry/folders`, `POST /registry/folders`, `PATCH /registry/folders/{id}` | Document families as named folders |
 | `GET /feedback/admin`, `PUT /feedback/admin/{id}` | The feedback inbox |
 
-## 04 · Access levels
+## 04 · Roles and permissions
 
 | Role | Reaches |
 | --- | --- |

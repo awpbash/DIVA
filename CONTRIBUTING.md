@@ -1,126 +1,124 @@
 # Contributing
 
-Thanks for looking. This is a small project with a strong opinion about what it
-is for, so the most useful thing you can do before writing code is open an issue
-and say what you are trying to achieve.
+DIVA is intended to be useful beyond the examples in this repository, and the
+project benefits from people bringing different document domains, workflows,
+and perspectives to it. Contributions are welcome across the codebase and the
+documentation: domain packs, tests, examples, interface improvements,
+performance work, bug reports, and ideas are all valuable.
 
-## Getting set up
+If you are unsure where a change belongs, open an issue first and describe the
+document workflow or problem you are trying to solve. That gives us a chance to
+shape the approach together before you invest time in a large change.
+
+## Before you begin
+
+For a substantial feature or design change, please search the existing issues
+and open a proposal before starting implementation. Small fixes and focused
+documentation changes can go directly into a pull request. Keeping a pull
+request focused makes it easier to review and easier for someone else to build
+on later.
+
+Please do not include confidential documents, API keys, or private customer
+data in issues, pull requests, tests, screenshots, or logs. For a security
+vulnerability, use the private process in [SECURITY.md](SECURITY.md) rather
+than opening a public issue.
+
+## Set up a development instance
 
 ```bash
 git clone https://github.com/awpbash/diva.git
 cd diva
 python -m venv .venv && . .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
-cp .env.example .env                            # then put your model API key in it
+cp .env.example .env                            # then add a model API key
 docker compose up -d cosmos
 python -m scripts.setup
 ```
 
-`python -m scripts.setup --check` re-runs the same checks without changing
-anything, which is the fastest way to find out why an instance will not start.
+Use `python -m scripts.setup --check` to inspect the configuration without
+changing it. The [Getting started](docs/getting-started.md) guide explains the
+browser workflow, and [Reference](docs/reference.md) lists the available
+commands.
 
-## Before you open a pull request
+## Verify a change
 
-Three commands, all free, none of which call a model:
+The continuous integration workflow runs the same checks used for review. The
+backend checks are deterministic and do not require a model API key or a live
+database:
 
 ```bash
-python -m pytest tests/          # the deterministic suite
-python -m ruff check .           # lint
-cd web && pnpm run build && pnpm test   # typecheck, bundle, and frontend tests
+python -m pytest tests/
+python -m ruff check .
 ```
 
-CI runs exactly these. A pull request that fails any of them will not be
-reviewed until it passes, not out of ceremony but because every one of them has
-caught a real defect.
+For frontend changes, install the locked dependencies and run the build and
+tests from `web/`:
 
-## The rules that are not negotiable
+```bash
+cd web
+pnpm install --frozen-lockfile
+pnpm run build
+pnpm test
+```
 
-These come from what the system promises its users. A change that breaks one of
-them is a defect regardless of how well it works otherwise.
+Changes to OCR, rendering, evidence geometry, or document configuration should
+also be checked against a representative document. A passing unit test can
+confirm the data shape, while a real page confirms that the evidence remains
+easy for a person to inspect.
 
-1. **Evidence must point at the right place.** Every extracted value carries a
-   verbatim snippet and a bounding box on the source page. A human verifies
-   values by looking at the highlight. If the highlight is wrong, verification is
-   worthless, so anything touching rendering, OCR geometry, or evidence anchoring
-   needs to be checked against a real document, not just a passing test.
+## Design principles
 
-2. **No answer beyond the evidence.** "Not in the documents" and "Not Stated" are
-   correct answers. A plausible guess is a defect.
+These principles describe the behavior contributors should preserve as DIVA
+evolves:
 
-3. **No per-document special cases.** If a fix only works for one file, it is not
-   a fix. Solutions belong in the schema and the config, where they apply to
-   every document that follows.
+1. **Keep evidence connected to the source.** Every extracted value should
+   retain the source snippet and page geometry that let a person verify it.
+2. **Keep extraction within the configured schema.** Content outside the field
+   schema can be proposed for review, but the model should not silently create
+   new fields at runtime.
+3. **Put domain behavior in configuration.** If a rule is specific to a
+   document family, prefer a field, ontology entry, prompt, or pack mapping so
+   the behavior can be reused by the domain rather than embedded in a special
+   case for one file.
+4. **Keep deployments domain-specific.** The active domain is selected through
+   `VERBATIM_DOMAIN` or `configs/pipeline.yaml`; application code should remain
+   independent of any one document vocabulary.
+5. **Update the documentation with the implementation.** When behavior,
+   commands, configuration, or visuals change, update the relevant guide,
+   example, or generated figure in the same pull request.
 
-4. **One domain per deployment.** The active domain resolves once, at import,
-   from `VERBATIM_DOMAIN` or `configs/pipeline.yaml`. Do not write a domain name
-   as a string literal in `pipeline/`, `api/`, or `scripts/`.
-   `tests/extraction/test_active_domain.py` fails the build if you do.
+## Add a document domain
+
+A domain is usually described through four YAML files:
+
+| File | Purpose |
+| --- | --- |
+| `configs/analyzers/<domain>/analyzer.yaml` | Document categories, entity categories, and party roles |
+| `configs/ontology/<domain>.yaml` | Graph labels, relationships, and identity rules |
+| `configs/packs/<domain>.yaml` | The mapping from extracted facts to graph records |
+| `configs/views/<domain>_ops.yaml` | The field schema and evidence mechanisms presented to reviewers |
+
+Use `commercial_agreement` as a starting point, then run the configuration
+check and contract tests for the new domain. The detailed authoring guide is
+in [Domains](docs/domains.md).
+
+## Documentation and examples
+
+Documentation is part of the public interface. The documentation tests check
+links and images reachable from [README.md](README.md) and
+[docs/README.md](docs/README.md), so add new pages to one of those indexes when
+they should be discoverable. The figure sources and regeneration instructions
+are in [docs/diagrams/README.md](docs/diagrams/README.md), and the screenshot
+workflow is in [docs/images/README.md](docs/images/README.md).
+
+The sample corpus is a shared fixture. When changing an expected answer,
+update the corpus generator or example documentation that establishes it, and
+regenerate any affected PDFs or screenshots.
 
 ## Style
 
-Match the code around you. Comment density, naming, and structure vary by module
-and that is deliberate. Lint enforces correctness rules only: undefined names,
-unused imports, mutable default arguments, exceptions that lose their cause.
-There is no formatter, no import sorter, and no line-reflow bot, because a diff
-that touches 400 files to move quotes around destroys the history that explains
-why the code is the way it is.
+Match the surrounding code and keep comments focused on why a decision exists.
+The linter checks correctness-oriented rules, while the project intentionally
+keeps formatting choices lightweight so contributors can make focused diffs.
 
-Two specific asks:
-
-- Comments should say why, not what. The code already says what.
-- No em-dashes and no semicolons in prose. Use separate sentences, commas, or
-  colons.
-
-## Documentation
-
-Documentation is part of the change, not a follow-up. If you alter behaviour a
-page describes, alter the page in the same pull request.
-
-`tests/test_docs.py` walks every link and image from `README.md` and
-`docs/README.md` and fails on anything that does not resolve, so a moved file
-or a renamed anchor is caught before review rather than after publishing.
-
-The figures are generated, not drawn. Source and regeneration steps are in
-[`docs/diagrams/README.md`](docs/diagrams/README.md). Each figure makes exactly
-one claim, stated in a comment above the function that draws it. If your change
-makes that claim untrue, redraw the figure rather than adding a caveat under it.
-
-The sample corpus in [`examples/`](examples/README.md) is a fixture. Every
-expected answer in `examples/README.md` is a claim about the wording in
-`examples/make_corpus.py`. Change one, change both, and regenerate the PDFs.
-
-## Adding a domain
-
-The engine is config-driven and a new domain is four YAML files, no Python:
-
-| File | What it declares |
-| --- | --- |
-| `configs/analyzers/<domain>/analyzer.yaml` | Document categories and the party-role taxonomy |
-| `configs/ontology/<domain>.yaml` | Node labels, edges, and the party-role vocabulary |
-| `configs/packs/<domain>.yaml` | The graph-build contract and the closed ontology |
-| `configs/views/<domain>_ops.yaml` | The field schema: what to capture, per field |
-
-`configs/packs/commercial_agreement.yaml` and its siblings are a worked second
-domain, deliberately unlike the first one: no equipment tier, different party
-roles, an inverted amendment vocabulary. Read it before writing your own, then
-point `VERBATIM_DOMAIN` at yours and run `python -m scripts.setup --check`.
-
-## Things that spend money
-
-Extraction, chat, and the evaluation harnesses call a language model, and those
-calls cost real money.
-
-Free and deterministic: the test suite, the linter, the extraction scorer,
-`scripts.rebuild_kb`, `scripts.build_km`, `scripts.reconcile_kb`,
-`scripts.view_coverage`, `scripts.accounts`, and `scripts.setup --check`.
-
-Spends money: `pipeline.ingest` (reading a document), `scripts.ask` (it posts a
-real question to a running instance), and `scripts.setup --check-models`, which
-makes one small request on purpose to prove the model endpoint answers.
-
-Keep it that way: a contributor should be able to verify a change without a
-funded API key.
-
-## Security
-
-Do not open a public issue for a vulnerability. See [SECURITY.md](SECURITY.md).
+Thank you for helping make DIVA more useful, understandable, and adaptable.

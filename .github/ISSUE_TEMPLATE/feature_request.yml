@@ -17,8 +17,9 @@ body:
     attributes:
       label: What you tried
       description: >
-        Config often gets further than people expect. A new document type is
-        four YAML files and no Python, so it helps to know where that ran out.
+        Share the configuration, commands, or workflow you have tried. A new
+        document type is often a useful example, since domains are described
+        through YAML as well as application code.
 
   - type: textarea
     id: idea
@@ -32,8 +33,8 @@ body:
       label: Scope check
       options:
         - label: >
-            This does not require per-document special-case logic (a fix that
-            works for one file is not a fix this project can take).
+            This proposal can be expressed as reusable behavior for a domain or
+            for the application, rather than only for one document.
         - label: >
-            This does not weaken the rule that every answer traces to evidence
-            in the source document.
+            This proposal preserves the rule that every answer traces to
+            evidence in the source document.
