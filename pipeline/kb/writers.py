@@ -502,12 +502,16 @@ def _cross_ref_pairs(
 
 
 def _canonical_key(name: str | None, suffixes: list[str]) -> str:
-    """Suffix-invariant canonical key. Lowercase, strip dots/commas,
+    """Suffix-invariant canonical key. Lowercase, strip all punctuation,
     collapse whitespace, then peel legal suffixes (longest first, applied
-    repeatedly — handles 'X Co Pte Ltd')."""
-    norm = " ".join(
-        (name or "").replace(",", " ").replace(".", " ").lower().split()
-    )
+    repeatedly, handles 'X Co Pte Ltd'). This key becomes a Cosmos item id
+    (CanonicalParty:<key>), so any character Cosmos treats as a path
+    separator ('/', '\\', '?', '#') must not survive, not just dots and
+    commas: a real legal name carrying "f/k/a" or "d/b/a" ("formerly known
+    as", "doing business as") used to break every later knowledge-graph
+    build with a 400 from Cosmos, since the slash landed straight in the
+    item's id."""
+    norm = " ".join(re.sub(r"[^a-z0-9]+", " ", (name or "").lower()).split())
     ordered = sorted((s.lower() for s in suffixes), key=len, reverse=True)
     changed = True
     while changed:

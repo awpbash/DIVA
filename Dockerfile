@@ -69,6 +69,10 @@ COPY api/ api/
 #   docker compose exec app python -m scripts.accounts list
 COPY eval/ eval/
 COPY scripts/ scripts/
+# The Demo path (api/main.py's _load_demo_corpus) reads this at runtime.
+# Missing here means every containerized deployment's Demo button silently
+# does nothing, which is exactly what happened until this line existed.
+COPY examples/ examples/
 
 # The built SPA — served by FastAPI (see api/main.py, SPA fallback).
 COPY --from=webbuild /web/dist web/dist

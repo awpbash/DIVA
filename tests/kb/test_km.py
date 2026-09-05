@@ -60,6 +60,15 @@ def test_canonical_party_key_skips_template_tokens():
     assert km.canonical_party_key("Northwind Logistics") == "northwind logistics"
 
 
+def test_canonical_party_key_strips_slashes():
+    # This key becomes a Cosmos item id (CanonicalParty:<key>), and Cosmos
+    # rejects '/' in an id with a 400. A real entity's former name, "f/k/a"
+    # or "d/b/a", broke every later knowledge-graph build until this held.
+    key = km.canonical_party_key("Glu Mobile Inc. f/k/a Sorrent, Inc")
+    assert "/" not in key
+    assert key == "glu mobile inc f k a sorrent"
+
+
 # --------------------------------------------------------------------------- #
 # Recital-field parsing → relationship + ordinal.
 # --------------------------------------------------------------------------- #
