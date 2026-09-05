@@ -30,7 +30,7 @@ onnxruntime>=1.17
 ```
 
 RapidOCR runs PP-OCR-derived ONNX models. In the local path it returns detected
-text lines and their boxes; DIVA keeps those boxes and derives larger block
+text lines and their boxes. DIVA keeps those boxes and derives larger block
 rectangles from them. The correction model can change text or group lines, but
 it does not emit citation coordinates.
 
@@ -90,7 +90,7 @@ client does not need to rediscover a snippet by searching the PDF.
 | `storage/quarantine/` | Content or relationships held out for review |
 
 The `doc.json` and `doc_geometry.json` files are deliberately separate. Models
-and text queries use the compact text file; the viewer uses the geometry sidecar
+and text queries use the compact text file, the viewer uses the geometry sidecar
 when it draws a citation.
 
 ## Rebuild and inspect

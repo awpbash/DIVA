@@ -1,7 +1,7 @@
 # DIVA documentation
 
 This index separates the public guides from the source-directory notes. Start
-with the guide that matches the task in front of you; the pages link to deeper
+with the guide that matches the task in front of you. The pages link to deeper
 details when those details are useful.
 
 ## Choose a guide
@@ -30,8 +30,8 @@ details when those details are useful.
 | [`tests/`](../tests/README.md) | Test layout and local verification |
 
 The pages are intentionally split by audience. The Architecture page explains
-where components run; Tech stack lists what they are built with. Pipeline
-overview explains what an operator sees when a PDF is processed; the
+where components run, Tech stack lists what they are built with. Pipeline
+overview explains what an operator sees when a PDF is processed, the
 `pipeline/` notes explain where a contributor changes that behavior. Data model
 describes stored records rather than repeating the ingestion walkthrough.
 

@@ -1,8 +1,8 @@
 # `pipeline/`
 
 This package processes PDFs and builds the searchable knowledge projection. The
-reader-facing explanation is [Pipeline overview](../docs/PIPELINE_OVERVIEW.md);
-this page is for contributors changing the implementation.
+reader-facing explanation is [Pipeline overview](../docs/PIPELINE_OVERVIEW.md).
+This page is for contributors changing the implementation.
 
 ## Layout
 
@@ -40,7 +40,7 @@ python -m pipeline.ingest <doc_id> --force
 ```
 
 Documents are stored under `storage/raw/` using a content-derived id. Stage
-artifacts are cached under `storage/`; use `--force` when a source, reader, or
+artifacts are cached under `storage/`. Use `--force` when a source, reader, or
 schema change requires new output. Rebuild the database projection without
 model calls with:
 

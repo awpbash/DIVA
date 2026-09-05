@@ -81,7 +81,7 @@ evolves:
    the behavior can be reused by the domain rather than embedded in a special
    case for one file.
 4. **Keep deployments domain-specific.** The active domain is selected through
-   `VERBATIM_DOMAIN` or `configs/pipeline.yaml`; application code should remain
+   `VERBATIM_DOMAIN` or `configs/pipeline.yaml`. Application code should remain
    independent of any one document vocabulary.
 5. **Update the documentation with the implementation.** When behavior,
    commands, configuration, or visuals change, update the relevant guide,

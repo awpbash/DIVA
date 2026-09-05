@@ -58,7 +58,7 @@ session in `X-User-Token`. If `CHAT_API_KEY` is set, they also send the shared
 key in `X-API-Key`.
 
 The first account comes from `BOOTSTRAP_ADMIN_EMAIL`. The default email-only
-sign-in is suitable for local evaluation; a shared deployment should put a real
+sign-in is suitable for local evaluation. A shared deployment should put a real
 identity layer in front of the application. See [Deployment](../docs/DEPLOYMENT.md)
 and [Security](../SECURITY.md).
 

@@ -26,14 +26,14 @@ tests/
 
 ## What the tests check
 
-- configuration composition and pack validation;
-- OCR and Content Understanding response adaptation;
-- page geometry, snippet matching, and evidence anchoring;
-- field extraction orchestration through fake model calls;
-- deterministic record and relationship construction;
-- vector and keyword retrieval helpers;
-- citation parsing and removal of unknown evidence ids; and
-- server-side roles, sensitivity filters, review votes, and route gates.
+- configuration composition and pack validation
+- OCR and Content Understanding response adaptation
+- page geometry, snippet matching, and evidence anchoring
+- field extraction orchestration through fake model calls
+- deterministic record and relationship construction
+- vector and keyword retrieval helpers
+- citation parsing and removal of unknown evidence ids
+- server-side roles, sensitivity filters, review votes, and route gates
 
 The tests check the application around model calls, not the quality of a live
 model's output. Evaluate extraction quality with a human-verified gold set:

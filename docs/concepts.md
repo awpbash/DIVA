@@ -19,7 +19,7 @@ license_fee:
 ```
 
 The schema also describes the value type, whether more than one value is
-allowed, and how evidence should be found. A field can be `Not Stated`; that is
+allowed, and how evidence should be found. A field can be `Not Stated`, and that is
 different from a value that was not processed or a value that a reviewer has
 not yet checked.
 
@@ -55,8 +55,8 @@ erase the earlier value. Earlier values stay available as history.
 | Document | Licence fee | Initial term |
 | --- | --- | --- |
 | Master agreement | SGD 48,000 | 3 years |
-| First Amendment | SGD 61,500 | — |
-| Second Amendment | — | 5 years |
+| First Amendment | SGD 61,500 | Silent |
+| Second Amendment | Silent | 5 years |
 | Current result | SGD 61,500 | 5 years |
 
 The walk is per field, not per document. This is the behavior demonstrated by

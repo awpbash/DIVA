@@ -1,7 +1,7 @@
 # `web/`
 
 The React client is a single workspace with chat, document review, knowledge,
-graph, and admin views. It uses the API for data and session state; it does not
+graph, and admin views. It uses the API for data and session state, and it does not
 make policy decisions about what a user may see.
 
 ## Run it
@@ -74,7 +74,7 @@ docker compose up -d app
 ```
 
 `vite.config.ts` contains a minifier setting required by the current dependency
-bundle; keep it when changing the build configuration.
+bundle. Keep it when changing the build configuration.
 
 For the backend and endpoint map, see [`api/README.md`](../api/README.md) and
 [`docs/reference.md`](../docs/reference.md). For contribution conventions, see

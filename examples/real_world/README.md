@@ -49,10 +49,10 @@ change.
 
 ## What it is good for
 
-- testing OCR and page geometry on varied scans;
-- checking that chains remain separate in retrieval;
-- inspecting how party names and amendment wording vary; and
-- finding cases that deserve a new regression test.
+- testing OCR and page geometry on varied scans
+- checking that chains remain separate in retrieval
+- inspecting how party names and amendment wording vary
+- finding cases that deserve a new regression test
 
 Do not include private documents or API keys in new examples, issues, or test
 fixtures. For domain-specific field expectations, add a small gold set through

@@ -17,7 +17,7 @@ flowchart LR
     UI --> PDF[Open page highlight]
 ```
 
-The planner chooses the shape of the work; it does not answer the question.
+The planner chooses the shape of the work. It does not answer the question.
 The retrieval loop can call more than one tool, combines the returned evidence,
 and sends that bundle to the answer-writing step. Citation ids that were not in
 the bundle are removed before the answer reaches the browser.
@@ -59,9 +59,9 @@ for adding the numbers.
 The answer writer receives ids such as `[ev:evidence-id]` beside the evidence
 it may use. The citation layer then:
 
-1. removes ids that were not returned by a tool in this request;
+1. removes ids that were not returned by a tool in this request,
 2. upgrades a raw span to a verified field citation when the same value is
-   available; and
+   available, and
 3. forwards the answer text and allowed ids to the browser.
 
 The browser requests `/evidence/{evidence_id}` when a citation is selected. The

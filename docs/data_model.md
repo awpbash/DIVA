@@ -39,7 +39,7 @@ preserving the link needed for evidence.
 ## Knowledge-store records
 
 The `kb` Cosmos container holds records, edges, and embeddings. Records are
-partitioned by `pk`; the access code in `pipeline/store/` handles the item shape
+partitioned by `pk`. The access code in `pipeline/store/` handles the item shape
 and query details.
 
 The important record groups are:
@@ -85,8 +85,8 @@ field.
 
 ```text
 master agreement ──AMENDS──> first amendment ──AMENDS──> second amendment
-       fee: 48,000              fee: 61,500                 fee: —
-       term: 3 years             term: —                    term: 5 years
+       fee: 48,000              fee: 61,500                 fee: silent
+       term: 3 years             term: silent                term: 5 years
 ```
 
 The resulting current record is `fee = 61,500` and `term = 5 years`. Silence in

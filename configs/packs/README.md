@@ -15,7 +15,7 @@ Everything right is deterministic or gated.
 ```
 packs/
 |-- _base.yaml             The doctype-INVARIANT engine (inherited by every pack)
-`-- <domain>.yaml          extends: _base; declares only what is doctype-specific
+`-- <domain>.yaml          extends: _base, declares only what is doctype-specific
 ```
 
 `pipeline/extraction/pack.py` loads a pack, deep-merges `_base` underneath it

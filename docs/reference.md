@@ -12,14 +12,14 @@ have development defaults or apply only to a selected deployment.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | — | API key for the configured model endpoint |
+| `OPENAI_API_KEY` | None | API key for the configured model endpoint |
 | `OPENAI_BASE_URL` | OpenAI API | OpenAI-compatible endpoint for chat and extraction |
 | `OPENAI_TEXT_MODEL` | `gpt-5.4-mini` | General text and chat |
 | `OPENAI_VISION_MODEL` | `gpt-5.4-mini` | Page correction and table repair |
 | `OPENAI_REASONING_MODEL` | `gpt-5.4` | Whole-document extraction |
 | `OPENAI_EMBED_MODEL` | `text-embedding-3-large` | Semantic search vectors |
 | `READER` | `rapidocr` | `rapidocr` for local OCR or `cu` for Azure Content Understanding |
-| `CU_ENDPOINT`, `CU_KEY`, `CU_ANALYZER` | — / `prebuilt-layout` | Azure reader settings when `READER=cu` |
+| `CU_ENDPOINT`, `CU_KEY`, `CU_ANALYZER` | None / `prebuilt-layout` | Azure reader settings when `READER=cu` |
 
 ### Domain and storage
 
@@ -32,8 +32,8 @@ have development defaults or apply only to a selected deployment.
 | `COSMOS_DB` | `verbatim` | Cosmos database name |
 | `COSMOS_CONTAINER` | `kb` | Knowledge container |
 | `COSMOS_VECTOR_MODE` | `client` | Exact local ranking or `native` Cosmos vector search |
-| `AZURE_STORAGE_CONNECTION_STRING` | — | Optional Blob mirror |
-| `AZURE_BLOB_ACCOUNT_URL`, `AZURE_BLOB_CONTAINER` | — / `storage` | Optional managed-identity Blob mirror |
+| `AZURE_STORAGE_CONNECTION_STRING` | None | Optional Blob mirror |
+| `AZURE_BLOB_ACCOUNT_URL`, `AZURE_BLOB_CONTAINER` | None / `storage` | Optional managed-identity Blob mirror |
 
 ### Application and access
 

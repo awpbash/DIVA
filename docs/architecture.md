@@ -24,7 +24,7 @@ Azure Cosmos DB or the local emulator.
 | Knowledge store | `pipeline/store/` | The only code that talks to Cosmos DB |
 
 The frontend is built during the Docker image build and served by FastAPI. A
-frontend change therefore needs a new image; a backend source mount in the
+frontend change therefore needs a new image. A backend source mount in the
 development Compose file can be picked up after a restart.
 
 ## A document moving through the system
@@ -49,7 +49,7 @@ The selected reader is controlled by `READER`:
 | `READER=cu` | Azure Content Understanding | Page text, layout, tables, and geometry from one document analysis call |
 
 Both readers write the page representation consumed by the later pipeline. The
-default Docker image installs `rapidocr` and `onnxruntime`; it does not install
+default Docker image installs `rapidocr` and `onnxruntime`, and it does not install
 the `paddleocr` Python package. RapidOCR uses PP-OCR-derived ONNX models, and
 the local path derives block rectangles from the OCR line boxes. See
 [Pipeline overview](PIPELINE_OVERVIEW.md) for the exact artifacts.
@@ -58,12 +58,12 @@ the local path derives block rectangles from the OCR line boxes. See
 
 | Data | Location | Can it be rebuilt? |
 | --- | --- | --- |
-| Original PDFs | `storage/raw/` | No; keep a backup |
+| Original PDFs | `storage/raw/` | No, keep a backup |
 | Rendered pages | `storage/pages/` | Yes, from the PDFs |
 | Text and geometry | `storage/pages_md/`, `storage/doc/`, `storage/doc_geometry/` | Yes, by re-reading the PDFs |
 | Field results | `storage/fields/` and `storage/canonical/` | Yes, by re-running extraction |
 | Embeddings | `storage/emb_cache/` | Yes, by re-embedding |
-| Accounts and review history | `storage/app.db` | No; back it up |
+| Accounts and review history | `storage/app.db` | No, back it up |
 | Searchable records and edges | Cosmos container | Yes, from the files in `storage/` |
 
 The practical backup unit is the `storage/` directory. The Cosmos projection can

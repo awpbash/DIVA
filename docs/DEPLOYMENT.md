@@ -8,11 +8,11 @@ an environment file with the model and database settings.
 
 Prepare:
 
-- a host that can run Docker Compose;
-- a persistent volume for `storage/`;
-- an OpenAI-compatible model endpoint, or Azure AI Foundry;
-- an Azure Cosmos DB account for a shared deployment; and
-- a reverse proxy or identity layer in front of the application.
+- a host that can run Docker Compose
+- a persistent volume for `storage/`
+- an OpenAI-compatible model endpoint, or Azure AI Foundry
+- an Azure Cosmos DB account for a shared deployment
+- a reverse proxy or identity layer in front of the application
 
 The local Cosmos emulator is useful for development. It is not a durable
 production database. Set `COSMOS_URI` and `COSMOS_KEY` to a real account for a
@@ -36,11 +36,11 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 The production Compose file:
 
-- builds one immutable application image;
-- mounts only `./storage` into the app;
-- binds port 8000 to loopback;
-- disables the development reload process; and
-- writes JSON logs with rotation.
+- builds one immutable application image
+- mounts only `./storage` into the app
+- binds port 8000 to loopback
+- disables the development reload process
+- writes JSON logs with rotation
 
 Check the service:
 
@@ -78,7 +78,7 @@ location / {
 `proxy_read_timeout` gives longer extraction and chat requests time to finish.
 
 If a second network gate is useful, set `CHAT_API_KEY`. Clients must then send
-the same value in `X-API-Key`; this is a shared gate, not per-user identity.
+the same value in `X-API-Key`. This is a shared gate, not per-user identity.
 
 ## Create accounts
 
@@ -120,7 +120,7 @@ docker compose -f docker-compose.prod.yml exec app \
 ```
 
 Use a scheduled file backup or volume snapshot. Keep the PDFs and
-`storage/app.db`; losing either requires recovery from a separate source.
+`storage/app.db`. Losing either requires recovery from a separate source.
 
 ## Updates and schema changes
 
@@ -156,7 +156,7 @@ The workload is quiet while users read and bursty during ingestion. Start with
 processing time and model rate limits.
 
 `VISION_PAGE_CONCURRENCY` controls parallel page work. `RENDER_DPI` controls
-page image size; 300 is the default. The local `rapidocr` reader uses CPU on the
+page image size, and 300 is the default. The local `rapidocr` reader uses CPU on the
 application host. The `cu` reader shifts page reading to one Azure analysis
 call per document.
 

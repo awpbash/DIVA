@@ -1,7 +1,7 @@
 # Define a document domain
 
 A domain is the set of document types, fields, relationships, and review rules
-for one DIVA instance. The application code is shared; the domain files tell it
+for one DIVA instance. The application code is shared, the domain files tell it
 what to look for.
 
 The repository ships `commercial_agreement` as a working example. Copy its
@@ -115,7 +115,7 @@ Amendment chains need a mapping from the domain's field names to six roles:
 | Parent | Which earlier document it changes |
 | Effective date | When the change takes effect |
 
-The names are domain-specific. One view may call the date `agreement_date`; a
+The names are domain-specific. One view may call the date `agreement_date`, a
 different view may call it `document_date`. Map the role to the field key in the
 `document_relationships` category.
 
@@ -218,7 +218,7 @@ links before using the domain on a larger set.
 - Extend `_universal` and `_base` instead of copying shared configuration.
 - Quote bare `Yes` and `No` in YAML.
 - Decide whether a blank means `Not Stated`, unchanged, or an external value.
-- Re-extract after changing the schema; field caches are presence-based.
+- Re-extract after changing the schema, field caches are presence-based.
 - Add a small representative document and expected answers to the tests.
 - Update this guide or the relevant configuration README with the change.
 

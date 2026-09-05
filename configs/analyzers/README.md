@@ -8,7 +8,7 @@ analyzer applies**.
 analyzers/
 |-- _universal/              ALWAYS available. The category vocabulary, no roles.
 |   `-- analyzer.yaml
-`-- <domain>/                extends _universal; adds the typed role taxonomy.
+`-- <domain>/                extends _universal, adds the typed role taxonomy.
     `-- analyzer.yaml
 ```
 

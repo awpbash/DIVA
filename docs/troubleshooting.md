@@ -34,9 +34,9 @@ so documents cannot be processed against the wrong field schema.
 | Check | Meaning |
 | --- | --- |
 | `CHAT_API_KEY` | If set, send it in `X-API-Key` |
-| Session account role | `default` is limited to chat; higher areas need more access |
+| Session account role | `default` is limited to chat, higher areas need more access |
 | Verifier flag | Review requires `python -m scripts.accounts verifier <email> --on` |
-| Account address | Only existing accounts can sign in; inspect them with `python -m scripts.accounts list` |
+| Account address | Only existing accounts can sign in, inspect them with `python -m scripts.accounts list` |
 
 ## Database and stored data
 
@@ -107,7 +107,7 @@ knowledge projection. See [Pipeline overview](PIPELINE_OVERVIEW.md) for the
 ### An amendment fills a field it does not change
 
 Open the field in **Review** and inspect the evidence. If the amendment is
-silent, correct the value to `Not Stated`; the family walk can then use the last
+silent, correct the value to `Not Stated`. The family walk can then use the last
 document that established the field. Improve the field hint when the same
 confusion appears across documents.
 
@@ -152,7 +152,7 @@ account.
 | SQLite reports it is locked while the app is running | Stop the app or use `docker compose run --rm app ...` for the one-off command |
 | `Yes` or `No` does not match a configured value | Quote it in YAML: `'Yes'` or `'No'` |
 | A flow-mapping hint loses text after a comma | Quote the complete string |
-| A Cosmos query fails on `AS value` | Use another alias such as `field_value`; `VALUE` is reserved |
+| A Cosmos query fails on `AS value` | Use another alias such as `field_value`, `VALUE` is reserved |
 
 ## Still stuck?
 

@@ -53,7 +53,7 @@ Amendment changes the fee and liability cap, and the Second Amendment changes
 the term and removes the termination-for-convenience clause.
 
 Extraction runs in the background. A document becomes searchable when its own
-processing finishes; the whole collection does not need to finish first.
+processing finishes. The whole collection does not need to finish first.
 
 ## Ask a question
 

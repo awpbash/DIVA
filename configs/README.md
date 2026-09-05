@@ -1,7 +1,7 @@
 # `configs/`
 
 The `configs/` tree describes what a DIVA instance extracts and how it stores
-the result. It is the place to change document-specific behavior; the reusable
+the result. It is the place to change document-specific behavior. The reusable
 engine lives in `pipeline/` and `api/`.
 
 For the guided authoring path, see [Define a document domain](../docs/domains.md).
