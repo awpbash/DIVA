@@ -17,8 +17,8 @@ eval/results/
 eval/qa/
 docs/ontology_graph.md
 
-# Manim's own render output (docs/diagrams/supersedence_anim.py) — the
-# committed artefact is docs/diagrams/supersedence.gif, not this
+# Manim's own render output (docs/diagrams/supersedence_anim.py).
+# The committed artefact is docs/diagrams/supersedence.gif, not this.
 media/
 
 # Node / web
