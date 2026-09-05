@@ -14,6 +14,15 @@
 .adm__actions button:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
 .adm__actions button:disabled { opacity: 0.45; cursor: default; }
 
+/* A safeguard running below the recommended bar, only shown when it actually
+   matters (see the JSX comment above the usage). */
+.adm__quorum-warn {
+  margin-bottom: 14px; padding: 10px 13px; font-size: 12.5px; line-height: 1.55;
+  color: var(--text); background: var(--bg-card); border: 1px solid var(--border-strong);
+  border-left: 2px solid #f0b429; border-radius: var(--radius-sm);
+}
+.adm__quorum-warn code { font-size: 11.5px; }
+
 /* Stat cards — 5 actionable KPIs, one row. */
 .adm__stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; flex: 0 0 auto; }
 @media (max-width: 1100px) { .adm__stats { grid-template-columns: repeat(2, 1fr); } }

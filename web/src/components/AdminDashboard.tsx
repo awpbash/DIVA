@@ -458,6 +458,20 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
         </Modal>
       )}
 
+      {/* A correction quorum of 1 is the correct default for a lone operator
+          (review_votes.py says so explicitly) and silently wrong once a
+          second verifier exists: a single approval then finishes a
+          correction with no second pair of eyes. Only worth a warning in
+          that second case. A solo instance should never see this. */}
+      {t.verifiers > 1 && t.correction_approvals < 2 && (
+        <div className="adm__quorum-warn">
+          {t.verifiers} people can verify fields, but a correction only needs
+          {" "}{t.correction_approvals} approval{t.correction_approvals === 1 ? "" : "s"} to take
+          effect. Set <code>REVIEW_CORRECTION_APPROVALS=2</code> in <code>.env</code> and
+          restart if corrections should need a second person to agree.
+        </div>
+      )}
+
       {/* Only actionable KPIs live here: corpus intake, the review-progress
           accountability number, and whether people actually use the app.
           Graph internals (statement/party/family counts) belong to the
@@ -1568,9 +1582,11 @@ function FeedbackShot({ name }: { name: string }) {
 
 const KIND_LABEL: Record<string, string> = {
   verification: "Verification", ontology: "Ontology", account: "Accounts",
-  document: "Documents", feedback: "Feedback", other: "Other",
+  document: "Documents", feedback: "Feedback", confidential_access: "Confidential access",
+  other: "Other",
 };
-const KINDS: ActivityKind[] = ["verification", "ontology", "account", "document", "feedback"];
+const KINDS: ActivityKind[] = ["verification", "ontology", "account", "document", "feedback",
+  "confidential_access"];
 
 const ACT_GET: Record<string, (it: ActivityItem) => unknown> = {
   when: it => it.at,

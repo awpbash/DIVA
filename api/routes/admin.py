@@ -813,13 +813,23 @@ def overview(_admin: dict = Depends(require_admin)) -> dict:
         })
     docs.sort(key=lambda d: (-d["kb_fields"], d["title"]))
 
+    users = appdb.list_users()
+    verifier_count = sum(1 for u in users
+                        if u.get("role") == "admin" or u.get("verifier"))
     totals = {
         "documents": len(docs),
         "extracted": sum(1 for d in docs if d["extracted"]),
         "in_kb": sum(1 for d in docs if d["in_kb"]),
         "populated": sum(d["populated"] for d in docs),
         "verified": sum(d["verified"] for d in docs),
-        "accounts": len(appdb.list_users()),
+        "accounts": len(users),
+        "verifiers": verifier_count,
+        # Surfaced so a multi-verifier instance running with a single-operator
+        # quorum setting is visible rather than silent. See review_votes.py's
+        # own docstring on why 1 is the right default for a lone operator and
+        # the wrong one once a second verifier exists.
+        "min_approvals": review_votes.MIN_APPROVALS,
+        "correction_approvals": review_votes.CORRECTION_APPROVALS,
         **kb_totals,
     }
     return {"totals": totals, "documents": docs}

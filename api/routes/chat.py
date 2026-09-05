@@ -213,6 +213,21 @@ async def _stream(req: ChatRequest, role: str, email: str = "") -> AsyncIterator
                       await _conf_value_tokens(sorted({c.doc_id for c in citations})))
         policy_mod.tag_citations(citations, role, doc_tokens=doc_tokens)
         visible, hidden = policy_mod.partition(citations, role)
+        # Compliance trail, the other half of redaction. `hidden` already
+        # proves a blocked attempt never reaches the answer. This records the
+        # opposite case, a CLEARED role's answer actually drawing on
+        # confidential material, so "who saw this field and when" has a real
+        # answer instead of only "who was blocked". Lands in the same audit
+        # log the admin Activity tab already reads.
+        exposed = [c for c in visible if c.sensitivity]
+        if exposed and email:
+            by_class: dict[str, int] = {}
+            for c in exposed:
+                by_class[c.sensitivity] = by_class.get(c.sensitivity, 0) + 1
+            appdb.log_event(
+                email, "confidential_access", "viewed confidential field(s)",
+                target=", ".join(sorted({c.doc_id for c in exposed})),
+                detail=", ".join(f"{n} {cls}" for cls, n in sorted(by_class.items())))
         redaction_note = policy_mod.redaction_note(hidden, role)
         restricted_labels = policy_mod.restricted_labels(role)
         if restricted_labels:

@@ -183,7 +183,8 @@ export interface AdminDoc {
 export interface AdminJob { status: string; kind?: string; stage?: string; error?: string | null; }
 export interface AdminTotals {
   documents: number; extracted: number; in_kb: number; populated: number; verified: number;
-  accounts: number; ops_fields: number; parties: number; families: number; human_validated: number;
+  accounts: number; verifiers: number; ops_fields: number; parties: number; families: number;
+  human_validated: number; min_approvals: number; correction_approvals: number;
 }
 export interface AdminOverview { totals: AdminTotals; documents: AdminDoc[]; }
 
@@ -240,7 +241,8 @@ export async function getUsageMetrics(): Promise<UsageMetrics> {
 }
 
 // ---- Activity feed (the admin changelog: who did what, when) ----
-export type ActivityKind = "verification" | "ontology" | "account" | "document" | "feedback" | "other";
+export type ActivityKind = "verification" | "ontology" | "account" | "document" | "feedback"
+  | "confidential_access" | "other";
 export interface ActivityItem {
   at: string; actor: string; actor_name: string;
   kind: ActivityKind; action: string; target: string; detail: string;
