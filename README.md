@@ -16,7 +16,7 @@ open an answer and check the document it came from.
 
 The application is aimed at document collections where context matters: a
 contract and its amendments, a group of filings, or another set of records with
-named fields and relationships. You define the fields for the document domain;
+named fields and relationships. You define the fields for the document domain.
 DIVA reads the documents, presents the results for review, and makes them
 available through chat and structured queries.
 
@@ -37,9 +37,22 @@ available through chat and structured queries.
 - Ask questions in chat or use structured lookups for exact comparisons and
   totals. Answers include citations that open the relevant page.
 
+![An answer reading "the current annual licence fee is SGD 61,500, and it was set by the 02-first-amendment-2024 document", with a citation chip clicked. The source PDF is open beside it with that exact clause highlighted in amber.](docs/images/chat-citation.png)
+
+"Read the newest document" gets the fee wrong here. The answer comes from a
+per-field walk backwards along the amendment chain, not from whichever
+document is most recent:
+
+![Two fields resolved separately by walking backwards along a chain of three documents. The licence fee is found in the first amendment, the initial term in the second.](docs/diagrams/supersedence.gif)
+
+![Three money fields, each showing its current value with the document that set it, and the earlier value struck through underneath. The licence fee is SGD 61,500 from the first amendment, with SGD 48,000 struck through. The source clause is quoted and highlighted on the page beside it.](docs/images/knowledge-supersedence.png)
+
 The repository includes a small synthetic contract family for a repeatable
-walkthrough. It also includes a larger public corpus; see the notes in
+walkthrough, and the screenshots above are taken against it. It also includes
+a larger public corpus. See the notes in
 [`examples/real_world/`](examples/real_world/README.md) before loading it.
+
+![An answer quoting the governing law clause of the Glu Mobile wireless content license word for word, with its citation open beside it, the exact clause highlighted in amber on the scanned SEC filing page.](docs/images/real-world-citation.png)
 
 ## Start locally
 
