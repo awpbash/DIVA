@@ -7,8 +7,8 @@ and say what you are trying to achieve.
 ## Getting set up
 
 ```bash
-git clone https://github.com/awpbash/verbatim.git
-cd verbatim
+git clone https://github.com/awpbash/diva.git
+cd diva
 python -m venv .venv && . .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
 cp .env.example .env                            # then put your model API key in it

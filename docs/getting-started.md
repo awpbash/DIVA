@@ -27,8 +27,8 @@ configure and nowhere else.
 ## 02 · Install and start
 
 ```bash
-git clone https://github.com/awpbash/verbatim.git
-cd verbatim
+git clone https://github.com/awpbash/diva.git
+cd diva
 cp .env.example .env
 docker compose up -d
 ```
@@ -258,7 +258,7 @@ Setting up this instance
 [  ok  ] Access policy
          every restricted label exists in the pack.
 [  ok  ] Knowledge store
-         http://localhost:8081 -> verbatim/kb  (database and container ready)
+         http://localhost:8081 -> configured-database/kb  (database and container ready)
 [  ok  ] Accounts
          Sign in as: admin@localhost
 ```

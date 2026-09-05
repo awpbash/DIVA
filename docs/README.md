@@ -1,6 +1,7 @@
-# Documentation
+# DIVA documentation
 
-Start where your question is.
+DIVA's documentation is organized around the way people use and extend the
+application. Start with the guide that matches your next question.
 
 | I want to | Read |
 | --- | --- |

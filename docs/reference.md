@@ -34,7 +34,7 @@ leave your network, host the endpoint yourself. Nothing else phones home.
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `VERBATIM_DOMAIN` | Autodetected | Which document schema this instance serves. With more than one pack present and no declaration, the app refuses to start |
-| `APP_NAME` | `Verbatim` | Served to the browser by `GET /branding`, so a rename is a restart |
+| `APP_NAME` | `DIVA` | Served to the browser by `GET /branding`, so a rename is a restart |
 | `APP_TAGLINE` | See `.env.example` | Shown under the name |
 | `APP_DOCUMENT_NOUN` | `document` | What the interface calls one of the things this instance holds. Set it to `record`, `application`, `case` or whatever your users say |
 | `APP_DOCUMENT_NOUN_PLURAL` | `documents` | The plural of the above |

@@ -1,243 +1,210 @@
-# Verbatim
+# DIVA
 
-**Ask questions of a pile of PDFs and get answers you can check.**
+## Document Intelligence with Visual Attribution
 
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 [![Docker](https://img.shields.io/badge/docker-compose%20up-blue.svg)](docker-compose.yml)
 
-Every answer is built only from your documents, cites the clause it came from,
-and clicking a citation highlights that exact paragraph on the page. "Not in
-the documents" is a correct answer. A confident guess is a defect.
+DIVA is an open-source document intelligence application for turning collections
+of PDFs into structured, reviewable knowledge. It combines schema-driven
+extraction, document relationship modeling, human verification, and evidence-
+aware retrieval so that an answer can be followed back to the exact passage
+and location that supports it.
 
-It is a complete application, not a library: a Python backend, a React
-workspace, and the retrieval logic in between. Clone it, run one setup
-command, upload a PDF, and ask it something.
+The name describes the central design principle: DIVA gives document content
+intelligence while preserving a visual attribution for every extracted value.
+Each answer can therefore be read in context, checked against the source page,
+and carried forward into a knowledge model that understands how documents
+relate to one another over time.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/evidence-chain-dark.svg">
   <img alt="A contract page with two highlighted clauses. Curved threads join each highlight to a named field holding the value, the verbatim snippet, and the page rectangle. A third field reads Not Stated and has no thread, because there is nothing on the page to anchor it to." src="docs/diagrams/evidence-chain-light.svg">
 </picture>
 
-> [!WARNING]
-> **Before you deploy this anywhere shared, read [SECURITY.md](SECURITY.md).**
-> Sign-in is passwordless by design: an email address alone signs you in. That
-> is fine on your own machine and behind your own network. It is not
-> authentication for the open internet.
+DIVA is designed as a complete application rather than a library: a Python
+backend, a React workspace, and the retrieval and knowledge services between
+them. After the initial setup, an operator can upload a PDF, define the fields
+that matter for a document domain, review the resulting evidence, and ask
+questions through the same workspace.
 
 ![An answer reading "the current annual licence fee is SGD 61,500, and it was set by the 02-first-amendment-2024 document", with a citation chip clicked. The source PDF is open beside it with that exact clause highlighted in amber.](docs/images/chat-citation.png)
 
-The screenshots on this page were taken against the three synthetic contracts
-in [`examples/`](examples), which ship with the repository so you can reproduce
-every one of them.
+The screenshots on this page use the three synthetic contracts in
+[`examples/`](examples), which are included so that the complete walkthrough
+can be reproduced from a fresh checkout.
 
----
+## What DIVA provides
 
-## Schema first
+### Schema-driven document intelligence
 
-Most retrieval systems mine open-ended text and hope the pieces line up
-afterwards. This one works the other way around: you write a field schema
-first, a model fills it in against your documents, and every value it produces
-is anchored to a verbatim snippet and a rectangle on the page, which a person
-then checks against that highlight before it's trusted.
+DIVA begins with a field schema that describes the information a domain needs.
+The extraction models then populate those named fields against the source
+documents, preserving both the value and the evidence that supports it. This
+gives a document collection a consistent vocabulary and makes the resulting
+knowledge straightforward to inspect, compare, and query.
 
-Once every document has the same verified fields filled in, the hard
-cross-document questions stop being guesswork and turn into ordinary code:
-which rate is currently in force across an amendment chain, what a set of
-deposits add up to, which of five versions of a clause is the one that's live.
+### Visual attribution for every value
 
-Here is the part that is easy to get wrong, and the reason the sample corpus
-exists:
+Every extracted value is associated with a verbatim source snippet and a
+rectangle on the rendered page. Reviewers can open a citation and see the
+precise clause, table row, or paragraph from which the value was obtained,
+which makes verification part of the normal workflow rather than a separate
+investigation.
+
+### Knowledge that follows document relationships
+
+Documents can describe their relationships to one another, including
+amendments and related document families. DIVA uses those relationships to
+resolve the current value of each field independently, while preserving the
+historical values and the document that established each one.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/supersedence.gif">
   <img alt="Two fields resolved separately by walking backwards along a chain of three documents. The licence fee is found in the first amendment, the initial term in the second." src="docs/diagrams/supersedence.gif">
 </picture>
 
-"Read the newest document" gets the fee wrong. "Read the base contract" gets
-the term wrong. The answer is a per-field walk backwards along a chain the
-documents declare about themselves, and it is deterministic code with no model
-involved.
+This per-field resolution model is useful for document families in which one
+amendment changes a fee while another changes a term. DIVA can identify the
+governing source for each field and present the resulting value together with
+its citation and history.
 
 ![Three money fields, each showing its current value with the document that set it, and the earlier value struck through underneath. The licence fee is SGD 61,500 from the first amendment, with SGD 48,000 struck through. The source clause is quoted and highlighted on the page beside it.](docs/images/knowledge-supersedence.png)
 
-### The same mechanism, at nineteen times the scale
+### Designed for real document collections
 
-The three documents above are small and hand-built on purpose, so the failure
-they demonstrate is easy to see. A second corpus ships alongside it for
-harder proof: nineteen real contracts pulled from public SEC filings, six
-independent amendment chains instead of one, licensed and sourced in
+The repository includes a second corpus of nineteen real contracts drawn from
+public SEC filings. It contains six independent amendment chains and provides
+a larger, more varied setting for exploring ingestion, evidence review, and
+cross-document retrieval. The corpus and its licensing notes are documented in
 [`examples/real_world/`](examples/real_world/README.md).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/scale-dark.svg">
-  <img alt="Two panels side by side. On the left, the flagship demo's single chain of three documents. On the right, the real-world corpus's six independent chains totalling nineteen documents, each drawn to its real length. A caption notes that a real amendment chain caught a bug the synthetic demo never could." src="docs/diagrams/scale-light.svg">
+  <img alt="Two panels side by side. On the left, the flagship demo's single chain of three documents. On the right, the real-world corpus's six independent chains totalling nineteen documents, each drawn to its real length. The comparison shows how the same document intelligence workflow extends from a focused demonstration to a larger collection." src="docs/diagrams/scale-light.svg">
 </picture>
 
-Real legal drafting found something the synthetic corpus never could. One
-contract names a party "Glu Mobile Inc. f/k/a Sorrent" (f/k/a is legal
-shorthand for "formerly known as", a common way a contract refers to a
-company that changed its name mid-relationship). The slash in that name
-broke the internal database record id for every document processed after it.
-Fixed, and covered by a regression test. The same chain, asked a real
-question at the same confidence and citation level as the walkthrough above:
+The real-world collection also includes a complete citation walkthrough for a
+governing-law clause from a scanned SEC filing, showing how DIVA carries the
+same evidence relationship from extraction through the answer workspace.
 
 ![An answer quoting the governing law clause of the Glu Mobile wireless content license word for word, with its citation open beside it, the exact clause highlighted in amber on the scanned SEC filing page.](docs/images/real-world-citation.png)
 
-## What you get
-
-| | |
+| Capability | Description |
 | --- | --- |
-| **Chat with real citations** | Answers stream in with clause-level sources. Click one and the PDF opens on that page with the paragraph highlighted |
-| **A verification workspace** | Every extracted field with its evidence, triaged so uncertain and high-value fields come first. Approve, reject, or correct. Several reviewers vote and the majority decides |
-| **Aligned cross-document knowledge** | Canonical parties, the amendment chain between documents, and the current value of every field with its history behind it |
-| **A graph explorer** | The knowledge structure as an actual graph, filtered to what an answer used |
-| **An admin area** | Upload a PDF and extraction starts. Accounts, roles, usage, activity, feedback, and live schema editing |
-| **Role-based access, enforced server-side** | A user without clearance never receives the confidential value. The browser is not trusted to hide it |
-
----
+| **Evidence-grounded chat** | Questions produce answers with clause-level citations, and selecting a citation opens the relevant PDF page with the supporting passage highlighted. |
+| **Verification workspace** | Extracted fields are presented with their evidence so reviewers can approve, reject, or correct values, with multi-reviewer voting available for shared workflows. |
+| **Aligned document knowledge** | Parties, document families, amendment relationships, current field values, and historical values are represented together in a queryable knowledge model. |
+| **Graph exploration** | The document and entity relationships can be explored visually, including the portions of the graph used to support an answer. |
+| **Administrative workspace** | Operators can upload documents, manage accounts and roles, monitor activity, review feedback, and edit schemas from the application. |
+| **Server-side access control** | Roles and sensitivity labels are enforced before data reaches the client, allowing deployments to separate general, confidential, and administrative access. |
 
 ## Quick start
 
-You need Docker and an API key for any OpenAI-compatible model endpoint.
-That is genuinely all: a setup wizard runs in the browser and does the rest,
-no file to hand-edit.
+DIVA requires Docker and an API key for an OpenAI-compatible model endpoint.
+The browser setup wizard creates the initial configuration and walks through
+the first administrator account, so a new instance can be started without
+hand-editing a configuration file.
 
 ```bash
-git clone https://github.com/awpbash/verbatim.git && cd verbatim
-cp .env.example .env            # nothing to fill in, the wizard asks for your key
-docker compose up -d            # the database and the app, on http://localhost:8000
+git clone https://github.com/awpbash/diva.git && cd diva
+cp .env.example .env
+docker compose up -d
 ```
 
-Open <http://localhost:8000>. A short wizard walks you through naming the
-instance, creating your admin account, and pasting in a model API key, tested
-live before it lets you continue. Then it asks how to start:
+Open <http://localhost:8000> and follow the setup wizard. It asks for the
+instance name, creates the first administrator account, and tests the model
+connection before completing the setup. The available starting paths are:
 
-| Path | What you get |
+| Starting path | Description |
 | --- | --- |
-| **Demo** | The three sample contracts in [`examples/corpus/`](examples/corpus) load automatically, built to demonstrate exactly the failure shown above |
-| **Ready-made, as-is** | The shipped `commercial_agreement` schema, untouched: licence, supply and non-disclosure fields |
-| **Clone and edit** | That same schema as a starting point, reshaped in the browser before you finish |
-| **Build from scratch** | Describe your kind of document in a sentence, let it draft a first field list, then edit it. Two switches turn on document-chain tracking and cross-document party matching if you need them |
+| **Demo** | Loads the three sample contracts from [`examples/corpus/`](examples/corpus), which are prepared for the guided walkthrough. |
+| **Ready-made, as-is** | Uses the shipped `commercial_agreement` schema for licence, supply, and non-disclosure documents. |
+| **Clone and edit** | Starts with the same schema as a foundation that can be reshaped in the browser. |
+| **Build from scratch** | Drafts an initial field list from a description of the document domain, after which the schema and document relationship options can be refined. |
 
-Finishing restarts the app once and signs you straight in, no separate login
-step. **[Getting started](docs/getting-started.md)** walks the whole thing
-end to end in about twenty minutes.
+The full walkthrough, including the sample questions and verification flow, is
+available in [Getting started](docs/getting-started.md). For a server
+deployment, see [Deployment](docs/DEPLOYMENT.md) for the production compose
+file, reverse proxy configuration, backups, and access settings.
 
-For a server rather than a laptop, read
-**[Deployment](docs/DEPLOYMENT.md)**. It covers the production compose file,
-the reverse proxy, what to back up, and the authentication decision you have
-to make before exposing an instance.
-
-### Without Docker
+### Running without Docker
 
 ```bash
 python -m uvicorn api.main:app --reload --port 8000
-cd web && pnpm install && pnpm run dev    # http://localhost:5173
+cd web && pnpm install && pnpm run dev
 ```
 
-Same wizard, same questions, just against the dev server instead of the
-Docker build. You still need somewhere to put the knowledge store.
-`docker compose up -d cosmos` is the easy answer, and what it holds is a
-disposable projection: if you lose it, `python -m scripts.rebuild_kb` rebuilds
-everything from your local files for free, with no model calls.
+This uses the same setup flow against the development server. A local
+knowledge store can be started with `docker compose up -d cosmos`, and the
+knowledge projection can be rebuilt from the files in `storage/` with
+`python -m scripts.rebuild_kb`.
 
-**On Windows**, set `PYTHONUTF8=1` and run everything as a module
-(`python -m scripts.rebuild_kb`, never `python scripts/rebuild_kb.py`).
+On Windows, set `PYTHONUTF8=1` and run operational commands as modules, such
+as `python -m scripts.rebuild_kb`.
 
-### Advanced: scripted setup, no browser
+### Scripted setup
 
-Everything the wizard does, you can also do by hand, which is the right
-choice for scripting a deployment or for CI:
+For deployments and CI environments, the browser wizard can be replaced by a
+fully scripted setup sequence:
 
 ```bash
 pip install -r requirements.txt
 
-cp .env.example .env            # put your key in OPENAI_API_KEY
-docker compose up -d cosmos     # just the local database
+cp .env.example .env
+docker compose up -d cosmos
 
-python -m scripts.setup         # checks everything, creates what is missing
-docker compose up -d            # the app
+python -m scripts.setup
+docker compose up -d
 ```
 
-`scripts/setup` runs seven checks in dependency order and stops at the first
-real problem, so the output names the one thing to fix. It creates the
-database, the container, and the first admin account, costs nothing, and calls
-no model, so it's safe to re-run any time. `--check` reports without changing
-anything:
+The setup command checks the environment in dependency order, creates missing
+resources, and can be run again safely. Use `python -m scripts.setup --check`
+to inspect the configuration without changing it.
 
-```
-$ python -m scripts.setup --check
+## Defining a document domain
 
-[  ok  ] Python 3.12
-[  ok  ] Python dependencies
-[  ok  ] Configuration source
-         Read from .env
-[  ok  ] Model API key
-         Routing model calls to api.openai.com.
-[  ok  ] Domain
-         commercial_agreement
-[  ok  ] Configuration
-         12 node labels, 22 schema fields in 8 categories.
-[  ok  ] Knowledge store
-         http://localhost:8081 -> verbatim/kb
-[  ok  ] Accounts
-         Sign in as: admin@localhost
-```
-
-This path signs you in as `admin@localhost` (or `BOOTSTRAP_ADMIN_EMAIL`)
-rather than an account you named yourself, since there is no wizard step to
-ask.
-
----
-
-## Teaching it your documents
-
-The engine has no idea what a contract is. Everything domain-specific lives in
-four config files, and adding a document type means writing them, not writing
-Python.
+DIVA separates the reusable document intelligence engine from the vocabulary
+of a particular document collection. A domain is described through
+configuration files for its analyzers, ontology, field schema, and prompts;
+adding a new document type therefore begins with describing the information
+that matters rather than changing the application code.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/domain-layers-dark.svg">
   <img alt="Four configuration file cards across the top, labelled you write. Below a dashed line marked the line between configuration and code, a single dark slab labelled the engine, identical for every domain, listing the module names a domain author never edits." src="docs/diagrams/domain-layers-light.svg">
 </picture>
 
-The field schema is the important one: it's the canonical target, and it's why
-this approach avoids the problem of the same concept coming back under six
-different names across a corpus. A bounded, named field doesn't drift the way
-an open-ended extracted phrase does.
+The field schema is the canonical target for extraction. Named, typed fields
+give a corpus a stable vocabulary, which in turn makes values easier to
+validate and compare across documents. The complete authoring guide, including
+the evidence mechanisms and document family policy, is in
+[Domains](docs/domains.md).
 
-**One deployment serves one domain.** It resolves once at startup, from
-`VERBATIM_DOMAIN` or `configs/pipeline.yaml`. With more than one pack present
-and no declaration, the app refuses to start rather than guess, because
-guessing means extracting every document against the wrong schema.
+The repository ships `commercial_agreement` as a worked example containing
+licence, supply, and non-disclosure fields. The same engine can serve domains
+with different document families, field vocabularies, and relationship rules;
+the configuration and contract tests are organized to support that separation.
 
-The full authoring guide, including every evidence mechanism and the document
-family policy, is in **[Domains](docs/domains.md)**.
+One deployment serves one domain, selected at startup from `VERBATIM_DOMAIN`
+or `configs/pipeline.yaml`. This keeps extraction, retrieval, and the
+knowledge model aligned with the schema that the instance is intended to
+serve.
 
-The repository ships `commercial_agreement` as a worked example: licence,
-supply and non-disclosure agreements in 22 fields. The project this was
-extracted from runs a completely different domain, with a physical equipment
-tier and its own party vocabulary. That is the test rather than an accident:
-the contract tests run over every domain a checkout ships, so "this is
-configurable" is something the suite checks rather than something a README
-claims.
+## Architecture
 
----
-
-## How it works
-
-The whole thing runs as one container. Your browser talks to it over HTTPS,
-and it in turn talks to the only three things outside itself: a database, a
-local folder, and whichever model endpoint you've pointed it at.
+DIVA runs as a single application container with a browser client, a Python
+API, the retrieval agent, and the ingestion pipeline. It connects to the
+configured model endpoint, the knowledge database, and the local document
+storage used by the deployment.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/architecture-dark.svg">
   <img alt="A browser talks over HTTPS to a single application container holding FastAPI, the retrieval agent and the ingestion pipeline. The container in turn talks to a model endpoint, a Cosmos DB database, and a local storage folder, drawn as a cloud, a cylinder and a folder respectively." src="docs/diagrams/architecture-light.svg">
 </picture>
 
-A document goes through the same four stages regardless of what kind of
-contract it is:
+A document moves through the following stages:
 
 ```mermaid
 flowchart LR
@@ -245,185 +212,131 @@ flowchart LR
     READ --> FIELDS["Schema-first extraction<br/>fills the fields you defined,<br/>anchored to snippet and page"]
     FIELDS --> BUILD["Aligned knowledge<br/>canonical parties · document DAG<br/>per-field supersedence"]
     BUILD --> Q["Two retrieval modes"]
-    Q -.->|"asynchronous, never blocking"| HUMAN["Human verification"]
+    Q -.->|"asynchronous"| HUMAN["Human verification"]
     HUMAN -.-> BUILD
 ```
 
-Verification is deliberately not in the line. A document is searchable the
-moment it lands, and review upgrades its trust tier afterwards. A correction
-becomes a definition or a rule, so the next document resolves on its own.
+Reading and extraction use the configured model services, while knowledge
+alignment, document relationships, field resolution, and graph rebuilding are
+implemented as deterministic application logic. The result is a citation
+backbone that persists from each current value, through its evidence snippet,
+to the page and rectangle that the workspace renders.
 
-Everything after reading the pages is deterministic Python with no model
-involved, which is why rebuilding the knowledge base is free.
+DIVA supports two complementary retrieval modes. Semantic retrieval finds
+relevant passages for natural-language questions, while structured retrieval
+queries the aligned fields and document relationships directly for precise
+lookups, comparisons, and aggregations.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/retrieval-modes-dark.svg">
   <img alt="A question splits into two tracks drawn in different styles. On the left, semantic search narrows soft overlapping candidates to a single highlighted clause. On the right, a deterministic query lists every matching field in a ruled table and totals them below a rule, computed in Python rather than by a language model." src="docs/diagrams/retrieval-modes-light.svg">
 </picture>
 
-The citation backbone survives every layer: value, to evidence snippet, to
-page and rectangle. That is what the viewer draws, and it is why a reviewer
-can trust what they are approving.
-
----
-
 ## Documentation
 
-| | |
+| Topic | Guide |
 | --- | --- |
-| [Getting started](docs/getting-started.md) | Clone to a cited answer, in about twenty minutes |
-| [Concepts](docs/concepts.md) | Why it is built this way, and what it deliberately does not do |
-| [Domains](docs/domains.md) | Point it at your own kind of document |
-| [Architecture](docs/architecture.md) | What talks to what, and where state lives |
-| [Reference](docs/reference.md) | Every setting, command and endpoint |
-| [Troubleshooting](docs/troubleshooting.md) | Symptom, cause, fix |
-| [Deployment](docs/DEPLOYMENT.md) | Putting it on a server |
-| [Examples](examples/README.md) | The sample corpus and ten questions with their answers |
-| [Real-world corpus](examples/real_world/README.md) | Nineteen real contracts, six real amendment chains, for testing at a bigger and messier scale |
+| Start using DIVA | [Getting started](docs/getting-started.md) |
+| Understand the design | [Concepts](docs/concepts.md) |
+| Add a document domain | [Domains](docs/domains.md) |
+| Understand the system | [Architecture](docs/architecture.md) |
+| Look up settings and commands | [Reference](docs/reference.md) |
+| Operate an instance | [Troubleshooting](docs/troubleshooting.md) · [Deployment](docs/DEPLOYMENT.md) |
+| Explore the examples | [Sample corpus](examples/README.md) · [Real-world corpus](examples/real_world/README.md) |
 
-The full index, including the deeper engine documentation, is in
-[`docs/`](docs/README.md).
-
----
+The complete documentation index, including the deeper engine documentation,
+is available in [`docs/`](docs/README.md).
 
 ## Configuration
 
-Every environment difference is an environment variable. Same image on a
-laptop, a small cloud box, or a private tenant. See
-[`.env.example`](.env.example) for the annotated list and
-[Reference](docs/reference.md) for the tables.
+DIVA keeps environment-specific values outside the image, so the same
+application can be used on a laptop, a small cloud host, or a private tenant.
+See [`.env.example`](.env.example) for the annotated environment and
+[Reference](docs/reference.md) for the full configuration tables.
 
-| | Variable | Options |
+| Setting | Environment variable | Description |
 | --- | --- | --- |
-| Model endpoint | `OPENAI_BASE_URL` | Unset for OpenAI. Point it at any OpenAI-compatible endpoint, including one inside your own network |
-| Reader | `READER` | `rapidocr`: local OCR plus a correction pass, no cloud service needed. `cu`: Azure Content Understanding, one paid call per document, cached |
-| Vector search | `COSMOS_VECTOR_MODE` | `client`: exact, in memory, right for development. `native`: the database's own index, for a real account |
-| Domain | `VERBATIM_DOMAIN` | Which document schema this instance serves |
-| Name | `APP_NAME` | What the instance calls itself. Served to the browser, so a rename is a restart |
-| First admin | `BOOTSTRAP_ADMIN_EMAIL` | The account created on first boot |
+| Model endpoint | `OPENAI_BASE_URL` | Leave unset for OpenAI or point it at any OpenAI-compatible endpoint, including an endpoint inside a private network. |
+| Document reader | `READER` | Select `rapidocr` for local OCR with a correction pass, or `cu` for Azure Content Understanding with cached results. |
+| Vector search | `COSMOS_VECTOR_MODE` | Use `client` for exact in-memory development search or `native` for the database index. |
+| Domain | `VERBATIM_DOMAIN` | Select the document schema served by the instance. |
+| Instance name | `APP_NAME` | Set the name and tagline presented by the browser workspace. |
+| First administrator | `BOOTSTRAP_ADMIN_EMAIL` | Choose the account created during first boot. |
 
-**Your documents go to the model endpoint you configure.** If they cannot
-leave your network, host the endpoint yourself. Nothing else phones home.
+Documents are sent to the model endpoint configured for the deployment. An
+endpoint can be hosted inside the same network when document content must stay
+within a private environment.
 
-## Access levels
+## Security and access
 
-Sessions carry a role, resolved on the server. The client never chooses its
-own clearance.
+DIVA resolves sessions, roles, and sensitivity labels on the server. The
+client receives only the values that the current session is permitted to
+access, and the review workspace can be made available to designated
+verifiers independently of the general access role.
 
-| Role | Can reach |
+| Role | Access |
 | --- | --- |
-| `admin` | Everything, plus review, accounts, schema editing, upload, and the feedback inbox |
-| `confidential` | Chat, knowledge, and explore, including values tagged confidential |
-| `default` | Chat only, with confidential values withheld before they leave the server |
+| `admin` | Full application access, including review, accounts, schema editing, uploads, and feedback. |
+| `confidential` | Chat, knowledge, and graph exploration, including values tagged as confidential. |
+| `default` | Chat with confidential values withheld by the server. |
 
-The verifier flag opens the review workspace independently of role, because
-verification is a vote and it needs more than one person, but only vetted
-people.
+Before exposing an instance beyond a private development environment, review
+the deployment guidance in [SECURITY.md](SECURITY.md) and
+[Deployment](docs/DEPLOYMENT.md).
 
----
+## Evaluation and development
 
-## Measurement
-
-The project's own quality gate is a free, deterministic scorer that grades
-extraction field by field against human-verified gold: correct, correctly
-abstained, missed, wrong, invented, plus whether the evidence link holds.
+The repository includes a deterministic extraction scorer that evaluates fields
+against a human-verified gold set, including the connection between each value
+and its evidence. Teams can create a domain-specific gold set with:
 
 ```bash
+python -m eval.extraction.score --dump
 python -m eval.extraction.score --run NAME
 ```
 
-Run it rather than trusting a number in a README. This public branch does not
-ship the private gold set from the original project, so create one for your own
-domain with `python -m eval.extraction.score --dump`, check it in privately,
-and use it as your extraction regression gate.
-
-**Retrieval accuracy is currently unmeasured on this branch.** The tool-routing
-layer was rewritten when the open-vocabulary extraction tier was retired, and
-the older question-answering numbers were measured against the previous
-design. They are not carried forward here, because a stale number is worse
-than no number.
-
-The deterministic suite is free and runs in about fifteen seconds:
+The offline test and lint checks can be run together with the frontend build
+and test suite:
 
 ```bash
-python -m pytest tests/       # no model calls, no live database
+python -m pytest tests/
 python -m ruff check .
 cd web && pnpm run build && pnpm test
 ```
 
-## Costs
+## Model usage and storage
 
-Two things cost money, and both are cached so you pay once.
+Model usage is concentrated in document reading, extraction, and question
+answering. Ingestion outputs are cached by stage, so re-running a completed
+document pipeline reuses the stored pages, text, evidence, and embeddings;
+knowledge graph reconstruction can likewise be performed from the local
+artifacts without repeating document reading.
 
-- **Ingesting a document.** It scales with pages, and reading them dominates
-  the cost. The three PDFs in the sample corpus came to about 27,000 tokens,
-  while a long scanned contract is a different order of magnitude entirely.
-  Re-running it later is free, since every stage is cached.
-- **Asking a question.** Small change per question, several tool calls each.
-
-For a sense of scale: loading the sample corpus, filling the schema three
-times over while tuning it, and asking about twenty questions came to 224,000
-tokens in total.
-
-Everything else, rebuilding the knowledge base, scoring extraction, running
-the tests, is free and calls no model. That is deliberate: you should be able
-to verify a change without a funded API key.
-
-## Complexity, roughly
-
-Not a formal analysis, this is a pipeline rather than an algorithm, but a
-rough sense of where time, disk and money go, measured against the two
-corpora in this repository rather than guessed.
-
-| | Time | Disk | Tokens |
-| --- | --- | --- | --- |
-| Reading one document, once | About half a minute | 6 to 7 MB. Rendered page images and their embeddings dominate, both scale with page count, not chain length | A few thousand for a short synthetic contract, tens of thousands for a real one |
-| Answering one question | A few seconds to under a minute, depending how many tool calls it takes | Nothing kept beyond the chat thread | Small change, several tool calls plus one answer. Never cached, every question is new work |
-| Rebuilding the knowledge graph | About three minutes across all 22 documents in this repository, measured | Nothing extra, it reads what ingestion already wrote | Free once every block has been embedded at least once. The graph structure itself never calls a model |
-
-Reading and extraction are per document and never repeat once cached, and the
-supersedence walk at query time is one backward pass along a single chain,
-not a scan of the whole corpus, so six independent chains cost six times one
-chain, not thirty-six. The one place that is not strictly linear: the
-knowledge graph rebuild that follows each document's extraction rebuilds the
-graph from every document ingested so far, not only the new one, so loading a
-large batch back to back does somewhat more total rebuild work than the same
-documents loaded one at a time on separate days. The graph-structure part of
-that work is always free and fast. Its embedding step reads from a disk
-cache keyed by exact text, so a rebuild triggered by, say, losing the
-database container is genuinely free, but the very first rebuild after a
-corpus grows still has to embed whatever it has not embedded before, which is
-the normal per-document reading cost, not an extra one.
-
-For the two corpora that ship here: the 3-document flagship demo came to
-about 27,000 tokens in total, the 19-document real-world set to about 1.5
-million, in line with real contracts running many times longer than the
-synthetic ones. All 22 documents together hold 147 MB on disk, about 6.7 MB
-per document on average, measured rather than estimated.
-
----
+The included sample corpus contains three synthetic contracts for a compact
+walkthrough and a nineteen-document real-world corpus for larger-scale
+experimentation. Together they provide a practical reference for estimating
+page storage, embedding volume, and model usage for a new document domain.
 
 ## Repository layout
 
-| Path | What |
+| Path | Purpose |
 | --- | --- |
-| `pipeline/extraction/` | Reader, schema-first extraction, evidence anchoring |
-| `pipeline/kb/` | Knowledge build, alignment, the amendment chain, supersedence |
-| `pipeline/store/` | The only code that talks to the database |
-| `configs/` | The whole domain definition: analyzers, ontology, packs, field schemas, prompts |
-| `api/` | FastAPI backend: retrieval agent, auth, review, knowledge, admin |
-| `web/` | React workspace |
-| `scripts/` | Operational commands: `setup`, `accounts`, `rebuild_kb`, `reconcile_kb`, `ask`, `load_real_world_corpus` |
-| `examples/` | The sample corpus and its expected answers, plus a real-world corpus for bigger-scale testing |
-| `eval/` | The extraction scorer |
-| `tests/` | Fast, offline, no model calls |
-| `docs/` | Documentation, and the source for every figure in it |
+| `pipeline/extraction/` | Document reading, schema-first extraction, and evidence anchoring. |
+| `pipeline/kb/` | Knowledge construction, entity alignment, document relationships, and supersedence. |
+| `pipeline/storage.py` | Database access and persistence. |
+| `configs/` | Domain definitions, including analyzers, ontology, packs, field schemas, and prompts. |
+| `api/` | FastAPI backend for retrieval, authentication, review, knowledge, and administration. |
+| `web/` | React workspace. |
+| `scripts/` | Setup, account, ingestion, rebuilding, reconciliation, querying, and corpus commands. |
+| `examples/` | Synthetic and real-world corpora with walkthrough material. |
+| `eval/` | Extraction scoring tools. |
+| `tests/` | Fast offline tests. |
+| `docs/` | User, operator, and engine documentation, together with figure sources. |
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: open an issue
-first, run the three free checks before opening a pull request, and do not add
-per-document special cases.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, domain
+configuration guidance, and checks used before a pull request is opened.
 
 ## Licence
 

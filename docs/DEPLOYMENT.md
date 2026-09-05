@@ -69,7 +69,7 @@ login does not disturb any of it: `api/routes/auth.py` mints the session and
 On a server with Docker installed:
 
 ```bash
-git clone <this repo> && cd verbatim
+git clone <this repo> && cd diva
 cp .env.example .env
 ```
 
@@ -108,7 +108,7 @@ there is no route list to maintain and no CORS to configure. Forward everything:
 ```nginx
 server {
     listen 443 ssl;
-    server_name verbatim.example.com;
+    server_name diva.example.com;
 
     # your TLS configuration, and your authentication, here
 
