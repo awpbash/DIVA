@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/diva-logo.png" width="360" alt="DIVA logo showing a friendly robot holding a document, with the words Document Intelligence with Visual Attribution">
+</p>
+
 # DIVA
 
 ## Document Intelligence with Visual Attribution
@@ -5,10 +9,6 @@
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 [![Docker](https://img.shields.io/badge/docker-compose%20up-blue.svg)](docker-compose.yml)
-
-<p align="center">
-  <img src="docs/images/diva-logo.png" width="360" alt="DIVA logo showing a friendly robot holding a document, with the words Document Intelligence with Visual Attribution">
-</p>
 
 DIVA is an open-source document intelligence application for turning collections
 of PDFs into structured, reviewable knowledge. It combines schema-driven
