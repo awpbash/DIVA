@@ -25,7 +25,10 @@
   /* text -------------------------------------------------------------- */
   --text:             #ecedf1;
   --text-muted:       #9da3ae;
-  --text-subtle:      #6c7280;
+  /* Was #6c7280, measured ~3.7:1 against --bg-app, under the 4.5:1 floor for
+     body text. Same cool-gray hue, lightened to clear it (~5.1:1 against
+     --bg-card, ~5.4:1 against --bg-app) rather than swapped for a flat gray. */
+  --text-subtle:      #868d9f;
   --text-inverse:     #15161a;
   --text-link:        #76a3ff;
 
