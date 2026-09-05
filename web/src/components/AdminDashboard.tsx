@@ -1696,7 +1696,7 @@ const ACCT_GET: Record<string, (a: Account) => unknown> = {
   verifier: a => (a.role === "admin" || a.verifier ? 0 : 1),
 };
 
-function AccountManager({ accounts, onChanged }: { accounts: Account[]; onChanged: () => void }) {
+export function AccountManager({ accounts, onChanged }: { accounts: Account[]; onChanged: () => void }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
