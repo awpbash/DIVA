@@ -13,10 +13,10 @@ hold either way.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 
-from .. import appdb
+from .. import appdb, ratelimit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -106,9 +106,19 @@ class LoginBody(BaseModel):
 
 
 @router.post("/login")
-def login(body: LoginBody) -> dict:
+def login(body: LoginBody, request: Request) -> dict:
     """Log in by email (no password — demo). Unknown emails are rejected, so access is
-    controlled by the seeded RBAC account list, not by whatever you type."""
+    controlled by the seeded RBAC account list, not by whatever you type.
+
+    Throttled by caller address regardless of outcome: sign-in has no
+    password step, so an email address IS the credential, which makes an
+    unthrottled login route a free scanner for which emails have accounts.
+    The limit applies to failed AND successful attempts alike, so it can't
+    be used to tell "wrong email" apart from "right email, just rate
+    limited" by trying twice."""
+    if not ratelimit.allow(f"login:{ratelimit.client_key(request)}",
+                           limit=10, window=60.0):
+        raise HTTPException(429, "too many sign-in attempts. Wait a minute and try again.")
     user = appdb.get_user(body.email)
     if not user:
         # "Ask an admin" is a dead end for a solo operator who IS the admin and
@@ -172,6 +182,22 @@ def edit_account(email: str, body: AccountEditBody, _admin: dict = Depends(requi
                     + (f" verifier={'on' if body.verifier else 'off'}"
                        if body.verifier is not None else ""))
     return {"ok": True, "user": _public(user)}
+
+
+@router.post("/accounts/{email}/sign-out-everywhere")
+def sign_out_everywhere(email: str, _admin: dict = Depends(require_admin)) -> dict:
+    """Revoke every standing session token for one account, without touching
+    the account itself. Before this, the only recourse for a leaked or shared
+    token was waiting up to 30 days for it to expire on its own, or deleting
+    the whole account just to force everyone off it. A role or verifier
+    change already takes effect immediately for an existing token (it's read
+    fresh from the account on every request), so this is specifically for
+    the case a role change doesn't cover: a token you no longer trust, on an
+    account that should otherwise keep existing exactly as it is."""
+    n = appdb.delete_sessions_for(email)
+    appdb.log_event(_admin["email"], "account", "signed out everywhere",
+                    target=email.strip().lower(), detail=f"{n} session(s) cleared")
+    return {"ok": True, "cleared": n}
 
 
 class NewAccountBody(BaseModel):

@@ -458,5 +458,12 @@ def synth_system_prompt(*, intent: str, needs_table: bool,
         history_block=history_block,
         catalog_block=catalog_block or "(catalog unavailable)",
         scope_docs_block=scope_docs_block or "(question not scoped to a specific contract)",
-        redaction_note=redaction_note or "(nothing withheld)",
+        # The full rule lives in rule 10 above, restated tersely right next
+        # to the notice itself, closer to where the model is actually
+        # reasoning about these specific withheld items, since a rule stated
+        # once in a longer numbered list gets followed less reliably than one
+        # repeated at the point of use.
+        redaction_note=(f"{redaction_note} Say HIDDEN FOR THE CURRENT ACCESS "
+                        f"LEVEL, never that it is absent or not stated."
+                        if redaction_note else "(nothing withheld)"),
     )

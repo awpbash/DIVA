@@ -64,6 +64,18 @@ _MAX_PDF_BYTES = 200 * 1024 * 1024
 _UPLOAD_CHUNK = 1024 * 1024
 
 
+def _safe_doc_id(doc_id: str) -> str:
+    """Same guard api/routes/review.py's _safe() already applies before a
+    doc_id reaches a file path: doc_id is always a content hash, never
+    anything with a path separator or a `..` segment, so anything that
+    doesn't pass isalnum() is not a real id and not worth resolving. These
+    routes are admin-only already, but the check is one line and keeps every
+    doc_id-taking route in this codebase held to the same bar."""
+    if not doc_id.isalnum():
+        raise HTTPException(400, "bad doc_id")
+    return doc_id
+
+
 async def _read_capped(upload, limit: int, what: str) -> bytes:
     """Read an upload, refusing once it exceeds `limit`.
 
@@ -405,6 +417,12 @@ async def upload_document(file: UploadFile,
     data = await _read_capped(file, _MAX_PDF_BYTES, "PDF")
     if not data:
         raise HTTPException(400, "empty file")
+    # The filename check above only proves the UPLOADER claimed .pdf, not
+    # that the bytes are one, so anything renamed to .pdf would otherwise
+    # sail through and only fail later, silently, in a background thread.
+    # Real PDFs open with this exact magic string.
+    if not data.startswith(b"%PDF-"):
+        raise HTTPException(400, "not a valid PDF file")
 
     # Content-addressed intake (same id scheme as the CLI): write to a temp name,
     # hash, then move into place. Re-uploading the same contract is a no-op.
@@ -440,14 +458,20 @@ async def upload_document(file: UploadFile,
         raise HTTPException(400, "a document cannot amend, novate or supersede "
                                  "itself — pick a different parent")
     # The declaration outlives this request: sidecar + (best-effort) graph.
+    # Both calls below are synchronous (file writes, a sqlite write, and when
+    # a family link is declared, a real blocking Cosmos HTTP round trip via
+    # _apply_intake's store.point()/store.patch()), on a route that runs on
+    # the shared event loop, so to_thread same as the other db calls in this
+    # file (see api/appdb.py's _conn() for why that matters).
     declared = any(intake.values())
     if declared:
-        _apply_intake(doc_id, intake, _admin["email"], group_hint=fid)
+        await asyncio.to_thread(
+            _apply_intake, doc_id, intake, _admin["email"], group_hint=fid)
     # The chosen folder is the family. Set AFTER the intake push so an
     # explicit folder outranks the parent-derived group of a link relation
     # (the upload dialog filters parents to the folder, so they agree).
     if fid:
-        intake_mod.set_group(_CFG, doc_id, fid)
+        await asyncio.to_thread(intake_mod.set_group, _CFG, doc_id, fid)
 
     # Auto-extract: a NEW document goes straight through the whole chain (ingest →
     # fields → review record → knowledge base). An already-known document is left
@@ -477,6 +501,7 @@ def extract_document(doc_id: str, refresh_fields: bool = False,
     the document again against the current schema. Needed after a schema edit,
     because the cache keys on the file existing and not on what is in it.
     """
+    doc_id = _safe_doc_id(doc_id)
     if not (_CFG.storage_root / "raw" / f"{doc_id}.pdf").exists():
         raise HTTPException(404, "no such document")
     if not _job_claim(doc_id, kind="extract", stage="starting…", error=None):
@@ -518,6 +543,7 @@ def update_intake(doc_id: str, body: IntakePatch,
     existing declaration, revalidates with the same rules as upload, and
     persists through the same path (sidecar + registry + family linking +
     free KM refresh). Human input, so it outranks extraction as always."""
+    doc_id = _safe_doc_id(doc_id)
     if not (_CFG.storage_root / "raw" / f"{doc_id}.pdf").exists():
         raise HTTPException(404, "no such document")
     existing = intake_mod.load_intake(_CFG, doc_id)
@@ -547,6 +573,7 @@ def move_document_folder(doc_id: str, body: FolderMove,
     """Move a document into (or out of) a folder. The folder_id IS the group
     string, so this sets the sidecar family, pushes it to the graph copy
     best-effort, and refreshes the KM layer for free."""
+    doc_id = _safe_doc_id(doc_id)
     if not (_CFG.storage_root / "raw" / f"{doc_id}.pdf").exists():
         raise HTTPException(404, "no such document")
     fid = (body.folder_id or "").strip() or None
@@ -842,9 +869,8 @@ def overview(_admin: dict = Depends(require_admin)) -> dict:
 # --------------------------------------------------------------------------- #
 # Dev / start-over reset — the in-app twin of `python -m scripts.reset_dev`.
 # Off by default: a real deployment must not ship a live self-destruct button
-# unless whoever runs it deliberately opts in (docs/setup-wizard-plan.md
-# P4.2's open question about dev-only vs. production reachability, settled
-# here as "opt-in via env var, disabled by default").
+# unless whoever runs it deliberately opts in, so it's gated behind an env
+# var rather than just an admin role check.
 # --------------------------------------------------------------------------- #
 _RESET_CONFIRM_PHRASE = "RESET"
 

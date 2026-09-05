@@ -7,7 +7,7 @@ import {
   extractDocument, feedbackAttachmentUrl, getAccounts, getActivity,
   getAdminOverview, getDevResetStatus, getFeedback, getRegistryFolders, getUsageMetrics,
   moveDocumentFolder, patchRegistryFolder, performDevReset,
-  setAccountRole, setFeedbackStatus,
+  setAccountRole, setFeedbackStatus, signOutEverywhere,
   updateDocumentIntake, uploadDocument,
 } from "../api";
 import { useDocumentTypes } from "../branding";
@@ -1709,6 +1709,7 @@ function AccountManager({ accounts, onChanged }: { accounts: Account[]; onChange
   const [eName, setEName] = useState("");
   const [eEmail, setEEmail] = useState("");
   const [eTitle, setETitle] = useState("");
+  const [signOutNote, setSignOutNote] = useState<string | null>(null);
   const { sort, toggle } = useSort();
 
   const filtered = useMemo(() => {
@@ -1739,7 +1740,18 @@ function AccountManager({ accounts, onChanged }: { accounts: Account[]; onChange
   function openEdit(a: Account) {
     setEditing(a.email);
     setEName(a.name || ""); setEEmail(a.email); setETitle(a.title || "");
-    setError(null);
+    setError(null); setSignOutNote(null);
+  }
+
+  async function handleSignOut(email: string) {
+    setBusy(email); setError(null); setSignOutNote(null);
+    try {
+      const { cleared } = await signOutEverywhere(email);
+      setSignOutNote(cleared > 0
+        ? `Signed out everywhere (${cleared} session${cleared === 1 ? "" : "s"} cleared).`
+        : "No active sessions to clear, they were already signed out.");
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(null); }
   }
 
   async function saveEdit() {
@@ -1841,12 +1853,18 @@ function AccountManager({ accounts, onChanged }: { accounts: Account[]; onChange
                         <input placeholder="Job title" value={eTitle} onChange={e => setETitle(e.target.value)} />
                         <button disabled={busy === a.email || !eEmail.includes("@")} onClick={saveEdit}>Save</button>
                         <button className="adm__cancel" onClick={() => setEditing(null)}>Cancel</button>
+                        <button className="adm__cancel" disabled={busy === a.email}
+                          title="Revoke every signed-in session for this account. They keep the account, just have to sign in again."
+                          onClick={() => handleSignOut(a.email)}>
+                          Sign out everywhere
+                        </button>
                       </div>
                       {eEmail.trim().toLowerCase() !== a.email && (
                         <div className="adm__edit-note">
                           Changing the email moves this person's login and chat history to the new address.
                         </div>
                       )}
+                      {signOutNote && <div className="adm__edit-note">{signOutNote}</div>}
                     </td>
                   </tr>
                 )}

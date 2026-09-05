@@ -45,11 +45,11 @@ import time
 import uuid
 from typing import AsyncIterator
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pipeline.store.aio import STORE_UNAVAILABLE_ERRORS
 from sse_starlette.sse import EventSourceResponse
 
-from .. import appdb, deps
+from .. import appdb, deps, ratelimit
 from .. import trust as trust_mod
 from ..rag import agent, planner, synth
 from ..rag import resolve as resolve_mod
@@ -75,6 +75,25 @@ log = logging.getLogger("rag.chat")
 def _sse(event: str, data: dict) -> dict:
     """sse-starlette envelope. Names match the wire format above."""
     return {"event": event, "data": json.dumps(data, ensure_ascii=False)}
+
+
+# Phrases the synth prompt's own redaction rule explicitly forbids (see
+# api/rag/prompts.py rule 10), checked here as a deterministic backstop. The
+# all-hidden short-circuit further down only fires when EVERY relevant fact
+# was withheld. When only SOME was, synth still runs normally over what IS
+# visible and can legitimately conclude, in good faith, that a value it never
+# saw "is not stated". The prompt rule is an instruction, not a guarantee, so
+# this catches the case the instruction doesn't.
+_ABSENCE_PHRASES = (
+    "not stated", "does not state", "not in the documents",
+    "not available", "no evidence was retrieved", "is not mentioned",
+    "isn't stated",
+)
+
+
+def _looks_like_absence_claim(text: str) -> bool:
+    low = text.lower()
+    return any(p in low for p in _ABSENCE_PHRASES)
 
 
 def _effective_role(user: dict, requested: str | None) -> str:
@@ -179,6 +198,19 @@ async def _stream(req: ChatRequest, role: str, email: str = "") -> AsyncIterator
             # unresolved, so the warning stands alone there).
             scope_docs_block = (scope_docs_block + "\n\n" + scope_note).strip()
 
+        # Computed upfront, before the agent loop, not after it: the value net
+        # (a document's confidential text tokens, stamped by build_km) is the
+        # belt-and-braces catch for a fact that slips past the per-tool source
+        # filters. Computing it only after the loop finished, the way this
+        # used to work, meant that catch only ever fired on the OUTGOING
+        # citation bundle, after the model had already read the unredacted
+        # tool result and narrated it into a "step" event that streams to the
+        # browser immediately, well before any post-loop filter runs. Passing
+        # it into the loop closes that gap: see agent.py's run() for where it
+        # gets applied per tool call, before a result ever reaches the model.
+        doc_tokens = ({} if not policy_mod.denied_classes(role) else
+                      await _conf_value_tokens(sorted(eff_doc_ids or doc_titles.keys())))
+
         # 2. Agent loop — tool-calling retrieval. Emits step / tool_call /
         # tool_result events; returns an AgentResult at the end.
         citations = []
@@ -191,7 +223,7 @@ async def _stream(req: ChatRequest, role: str, email: str = "") -> AsyncIterator
             embed_client=embed_client,
             # Source-filtering tools (verified KB, raw-text search) run under
             # the session role resolved by the route.
-            role=role,
+            role=role, doc_tokens=doc_tokens,
             ops_scope=ops_scope, scope_note=scope_note,
         ):
             if isinstance(ev, AgentEvent):
@@ -205,14 +237,16 @@ async def _stream(req: ChatRequest, role: str, email: str = "") -> AsyncIterator
                     "n_citations": len(citations),
                 })
 
-        # Access policy (RBAC redaction). Tag every citation for the viewer's
-        # role (drives the client-side blur), then build the answer from VISIBLE
-        # evidence only — restricted facts never reach synth (secure by
-        # construction). The role comes from the LOGIN SESSION (admin may
-        # impersonate for debugging), resolved once in the route.
-        doc_tokens = ({} if not policy_mod.denied_classes(role) else
-                      await _conf_value_tokens(sorted({c.doc_id for c in citations})))
-        policy_mod.tag_citations(citations, role, doc_tokens=doc_tokens)
+        # Access policy (RBAC redaction). Every citation was already tagged
+        # (sensitivity + restricted stamped) inside the agent loop above, one
+        # tool call at a time, not re-tagged here: tag_citations' value-net
+        # check reads a citation's OWN snippet/fact_summary text to catch a
+        # confidential value that slipped past the label check, and the loop
+        # already blanked those same fields the moment it found a match. A
+        # second pass over the now-redacted text would search empty ground
+        # and could un-flag exactly the citation this exists to catch. What's
+        # left here is building the answer from VISIBLE evidence only.
+        # Restricted facts never reach synth, secure by construction.
         visible, hidden = policy_mod.partition(citations, role)
         # Compliance trail, the other half of redaction. `hidden` already
         # proves a blocked attempt never reaches the answer. This records the
@@ -335,6 +369,20 @@ async def _stream(req: ChatRequest, role: str, email: str = "") -> AsyncIterator
             yield _sse("token", {"delta": delta})
 
         full_text = "".join(full_text_parts)
+        # Deterministic backstop for the PARTIAL-redaction case (some but not
+        # all relevant evidence was hidden): the model was told never to
+        # phrase a hidden value as absent, but that's an instruction, not a
+        # guarantee, and it can slip. It can only be appended, not rewritten
+        # in place, since the flawed sentence has already streamed to the
+        # browser token by token.
+        if redaction_note and _looks_like_absence_claim(full_text):
+            correction = (
+                "\n\n⚠ Note: some evidence for this question was withheld for "
+                "your access level. If anything above reads as though a value "
+                "is not stated, it may instead be restricted rather than "
+                "genuinely absent.")
+            full_text += correction
+            yield _sse("token", {"delta": correction})
         used = set(extract_cited_ids(full_text))
         unknown = sorted(used - allowed_ids)
         log.info("synth done in %.2fs: chars=%d used=%d unknown=%d",
@@ -382,6 +430,16 @@ async def _stream(req: ChatRequest, role: str, email: str = "") -> AsyncIterator
 
 @router.post("/chat")
 async def chat(req: ChatRequest, user: dict = Depends(current_user)):
+    # Every call here makes at least one real, paid model call and often
+    # several (plan, agent tool-calling steps, synth), with no other ceiling
+    # anywhere in the app on how often one account can trigger that. Capped
+    # per account rather than per IP: the cost follows the login, not the
+    # network address, and a shared/leaked login is exactly the case this
+    # needs to bound. Generous enough for a person typing questions, tight
+    # enough to make a scripted loop expensive to run rather than free.
+    if not ratelimit.allow(f"chat:{user['email']}", limit=20, window=60.0):
+        raise HTTPException(429, "too many questions in a short time. Wait a "
+                                 "minute and try again.")
     # Usage is metered under the SESSION account even when an admin
     # impersonates another role — spend follows the person, not the mask.
     return EventSourceResponse(

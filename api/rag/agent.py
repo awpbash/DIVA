@@ -31,6 +31,7 @@ from pipeline.store.aio import STORE_UNAVAILABLE_ERRORS, AsyncCosmosStore
 from openai import AsyncOpenAI
 
 from ..settings import get_settings
+from . import policy as policy_mod
 from .prompts import agent_system
 from .schemas import ChatMessage, Citation, IntentPlan
 from .tools import (
@@ -226,13 +227,27 @@ async def run(
     catalog: str = "", meter=None, doc_titles: dict[str, str] | None = None,
     embed_client: AsyncOpenAI | None = None, role: str | None = None,
     ops_scope: dict | None = None, scope_note: str = "",
+    doc_tokens: dict[str, list[str]] | None = None,
 ) -> AsyncIterator[AgentEvent | AgentResult]:
     """Run the tool-calling loop. Yields ``AgentEvent`` instances during the
     loop and one final ``AgentResult`` when it terminates.
 
     The route layer matches on type: events get re-emitted as SSE, the
     result feeds synth.
-    """
+
+    ``doc_tokens`` is the confidential-value net (api/rag/policy.py), applied
+    to each tool call's results BEFORE they are appended to the conversation
+    or yielded as a tool_result event. The per-tool source filters already
+    keep most confidential facts out of a result entirely. This is the
+    belt-and-braces catch for the ones that slip past that first check
+    (a mislabelled fact, or a visible citation's row_context smuggling a
+    restricted value past the class check, same as api/rag/policy.py's
+    tag_citations already documents). Applying it here, not just on the
+    final bundle after the loop, matters because a restricted value the
+    model READS can otherwise resurface in its own free-text "thought" on a
+    later step, which streams to the browser as it's generated, well before
+    any post-loop filter would ever run. None skips the check entirely
+    (callers with no role/clearance concept, if any ever exist)."""
     if not messages:
         yield AgentResult(citations=[], steps_used=0, finish_reason="empty_input")
         return
@@ -382,6 +397,19 @@ async def run(
                 finish_called = True
             elif isinstance(result, list):
                 new_citations = result
+
+            # Redact BEFORE this reaches the bundle, the conversation, or the
+            # model's next turn. See the doc_tokens paragraph on run()'s
+            # docstring for why this can't wait until the loop is over.
+            if doc_tokens is not None and new_citations:
+                policy_mod.tag_citations(new_citations, role, doc_tokens=doc_tokens)
+                for c in new_citations:
+                    if c.restricted:
+                        c.snippet = "[restricted for your access level]"
+                        c.fact_summary = None
+                        c.row_context = None
+                        c.linked_context = None
+                        c.verified_by = None
 
             added = _merge_citations(bundle, new_citations)
 

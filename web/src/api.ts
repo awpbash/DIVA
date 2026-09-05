@@ -336,6 +336,16 @@ export async function editAccount(
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(String((data as { detail?: string }).detail || `edit account: ${r.status}`));
 }
+/** Revoke every standing session token for one account (admin). Leaves the
+ * account itself untouched, they just have to sign in again. */
+export async function signOutEverywhere(email: string): Promise<{ cleared: number }> {
+  const r = await apiFetch(apiUrl(`/auth/accounts/${encodeURIComponent(email)}/sign-out-everywhere`), {
+    method: "POST", headers: authHeaders(),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(String((data as { detail?: string }).detail || `sign out: ${r.status}`));
+  return data as { cleared: number };
+}
 export async function addAccount(body: { email: string; name?: string; title?: string; role?: string; zone?: string }): Promise<void> {
   const r = await apiFetch(apiUrl("/auth/accounts"), {
     method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
