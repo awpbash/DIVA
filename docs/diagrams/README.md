@@ -85,8 +85,12 @@ full set, including the request sequence and the document-arrival flow that
 this figure deliberately leaves out.
 
 `architecture` and `workflow` earn their place here because they are the two
-figures a new reader is most likely to revisit. They use a small hand-drawn SVG
-icon vocabulary instead of an icon font, which keeps them readable in GitHub's
-light and dark themes. Use Mermaid for ordinary maps of components or API
-sequences; use this directory for a figure that carries a specific visual
-argument.
+figures a new reader is most likely to revisit. Both use a small hand-drawn
+SVG icon vocabulary instead of an icon font for generic roles, which keeps
+them readable in GitHub's light and dark themes. `architecture` departs from
+that vocabulary in exactly three spots, where a box names a specific product
+rather than a role: the container runtime, the model endpoint, and the
+database service each get that product's own real logo instead of an
+invented stand-in, see `brand_logo` in `make_diagrams.py`. Use Mermaid for
+ordinary maps of components or API sequences, and use this directory for a
+figure that carries a specific visual argument.

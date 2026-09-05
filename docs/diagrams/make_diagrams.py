@@ -1,4 +1,4 @@
-"""make_diagrams.py — the documentation diagrams, as source rather than binaries.
+"""make_diagrams.py: the documentation diagrams, as source rather than binaries.
 
     python docs/diagrams/make_diagrams.py
 
@@ -143,37 +143,13 @@ def check(cx: float, cy: float, colour: str, r: float = 8) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# System icons, used only by `architecture` below. A hand-built minimum: an
-# isometric box for "one container", a cylinder for a database, a folder for a
-# filesystem, and a cloud for an external endpoint. That is the small
-# vocabulary any component diagram needs, drawn in the same flat, single-
-# stroke style as everything else here rather than pulled from an icon font
-# or library.
+# System icons, used only by `architecture` below. A folder for the local
+# filesystem stays hand-drawn, flat, single-stroke, like every other figure
+# here, because "a filesystem" is a role, not a product. The container
+# runtime, the model endpoint, and the database service are not roles, they
+# are specific products, so `brand_logo` below embeds each one's own real
+# mark instead of an invented stand-in.
 # --------------------------------------------------------------------------- #
-def cube_icon(x: float, y: float, s: float, *, stroke: str) -> str:
-    top = f"M {x} {y+s*0.5} L {x+s*0.5} {y} L {x+s} {y+s*0.5} L {x+s*0.5} {y+s} Z"
-    left = f"M {x} {y+s*0.5} L {x+s*0.5} {y+s} L {x+s*0.5} {y+s*1.8} L {x} {y+s*1.3} Z"
-    right = f"M {x+s} {y+s*0.5} L {x+s*0.5} {y+s} L {x+s*0.5} {y+s*1.8} L {x+s} {y+s*1.3} Z"
-    return (f'<path d="{top}" fill="none" stroke="{stroke}" stroke-width="1.4" '
-            f'stroke-linejoin="round"/>'
-            f'<path d="{left}" fill="none" stroke="{stroke}" stroke-width="1.4" '
-            f'stroke-linejoin="round" opacity="0.7"/>'
-            f'<path d="{right}" fill="none" stroke="{stroke}" stroke-width="1.4" '
-            f'stroke-linejoin="round" opacity="0.55"/>')
-
-
-def cylinder_icon(cx: float, top: float, w: float, h: float, *, fill: str,
-                   stroke: str, sw: float = 1.6) -> str:
-    rx, ry = w / 2, w * 0.16
-    bottom = top + h
-    body = (f"M {cx-rx} {top+ry} L {cx-rx} {bottom-ry} "
-            f"A {rx} {ry} 0 0 0 {cx+rx} {bottom-ry} L {cx+rx} {top+ry} "
-            f"A {rx} {ry} 0 0 0 {cx-rx} {top+ry} Z")
-    return (f'<path d="{body}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"/>'
-            f'<ellipse cx="{cx}" cy="{top+ry}" rx="{rx}" ry="{ry}" fill="{fill}" '
-            f'stroke="{stroke}" stroke-width="{sw}"/>')
-
-
 def folder_icon(x: float, y: float, w: float, h: float, *, fill: str,
                  back: str, stroke: str, sw: float = 1.6) -> str:
     tabw = w * 0.42
@@ -181,14 +157,63 @@ def folder_icon(x: float, y: float, w: float, h: float, *, fill: str,
             rect(x, y + h * 0.14, w, h * 0.86, fill=fill, stroke=stroke, rx=6, sw=sw))
 
 
-def cloud_icon(cx: float, cy: float, s: float, *, fill: str, stroke: str,
-               sw: float = 1.8) -> str:
-    d = (f"M {cx-60*s} {cy+18*s} "
-         f"C {cx-80*s} {cy+18*s} {cx-82*s} {cy-8*s} {cx-56*s} {cy-13*s} "
-         f"C {cx-56*s} {cy-40*s} {cx-14*s} {cy-44*s} {cx-1*s} {cy-25*s} "
-         f"C {cx+24*s} {cy-40*s} {cx+58*s} {cy-22*s} {cx+52*s} {cy-1*s} "
-         f"C {cx+75*s} {cy-1*s} {cx+77*s} {cy+18*s} {cx+54*s} {cy+18*s} Z")
-    return f'<path d="{d}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}" stroke-linejoin="round"/>'
+def brand_logo(cx: float, cy: float, size: float, inner: str, *,
+               view_w: float, view_h: float) -> str:
+    """Centre a real product mark's own path data at (cx, cy).
+
+    `inner` is that product's official SVG markup (defs and paths, sourced
+    from the product itself, not redrawn), copied verbatim rather than
+    approximated, so the mark stays recognisable and stays correct. `size`
+    is the rendered width or height, whichever the source is wider or taller
+    in, so different marks (a square glyph, a taller triangular one) come out
+    visually comparable instead of all forced into one bounding box.
+    """
+    k = size / max(view_w, view_h)
+    tx, ty = cx - view_w * k / 2, cy - view_h * k / 2
+    return f'<g transform="translate({tx} {ty}) scale({k})">{inner}</g>'
+
+
+# Official marks, embedded verbatim. OpenAI's and Microsoft's were both
+# pulled from the simple-icons library the rest of this project's badges
+# read from (Microsoft over a trademark dispute that took its whole icon
+# set with it), so these two are sourced from Iconify's separately
+# maintained `logos` collection instead, see the "badges/" section of
+# docs/images/README.md for the same problem on the Markdown side.
+LOGO_OPENAI = (
+    '<path fill="white" d="M239.184 106.203a64.72 64.72 0 0 0-5.576-53.103C219.452 28.459 191 15.784 163.213 21.74A65.586 65.586 0 0 0 52.096 45.22a64.72 64.72 0 0 0-43.23 31.36c-14.31 24.602-11.061 55.634 8.033 76.74a64.67 64.67 0 0 0 5.525 53.102c14.174 24.65 42.644 37.324 70.446 31.36a64.72 64.72 0 0 0 48.754 21.744c28.481.025 53.714-18.361 62.414-45.481a64.77 64.77 0 0 0 43.229-31.36c14.137-24.558 10.875-55.423-8.083-76.483m-97.56 136.338a48.4 48.4 0 0 1-31.105-11.255l1.535-.87l51.67-29.825a8.6 8.6 0 0 0 4.247-7.367v-72.85l21.845 12.636c.218.111.37.32.409.563v60.367c-.056 26.818-21.783 48.545-48.601 48.601M37.158 197.93a48.35 48.35 0 0 1-5.781-32.589l1.534.921l51.722 29.826a8.34 8.34 0 0 0 8.441 0l63.181-36.425v25.221a.87.87 0 0 1-.358.665l-52.335 30.184c-23.257 13.398-52.97 5.431-66.404-17.803M23.549 85.38a48.5 48.5 0 0 1 25.58-21.333v61.39a8.29 8.29 0 0 0 4.195 7.316l62.874 36.272l-21.845 12.636a.82.82 0 0 1-.767 0L41.353 151.53c-23.211-13.454-31.171-43.144-17.804-66.405zm179.466 41.695l-63.08-36.63L161.73 77.86a.82.82 0 0 1 .768 0l52.233 30.184a48.6 48.6 0 0 1-7.316 87.635v-61.391a8.54 8.54 0 0 0-4.4-7.213m21.742-32.69l-1.535-.922l-51.619-30.081a8.39 8.39 0 0 0-8.492 0L99.98 99.808V74.587a.72.72 0 0 1 .307-.665l52.233-30.133a48.652 48.652 0 0 1 72.236 50.391zM88.061 139.097l-21.845-12.585a.87.87 0 0 1-.41-.614V65.685a48.652 48.652 0 0 1 79.757-37.346l-1.535.87l-51.67 29.825a8.6 8.6 0 0 0-4.246 7.367zm11.868-25.58L128.067 97.3l28.188 16.218v32.434l-28.086 16.218l-28.188-16.218z"/>'
+)
+LOGO_OPENAI_VB = (256, 260)
+
+LOGO_AZURE = (
+    '<defs><linearGradient id="dgAzureA" x1="58.972%" x2="37.191%" y1="7.411%" y2="103.762%"><stop offset="0%" stop-color="#114a8b"/><stop offset="100%" stop-color="#0669bc"/></linearGradient><linearGradient id="dgAzureB" x1="59.719%" x2="52.691%" y1="52.313%" y2="54.864%"><stop offset="0%" stop-opacity=".3"/><stop offset="7.1%" stop-opacity=".2"/><stop offset="32.1%" stop-opacity=".1"/><stop offset="62.3%" stop-opacity=".05"/><stop offset="100%" stop-opacity="0"/></linearGradient><linearGradient id="dgAzureC" x1="37.279%" x2="62.473%" y1="4.6%" y2="99.979%"><stop offset="0%" stop-color="#3ccbf4"/><stop offset="100%" stop-color="#2892df"/></linearGradient></defs>'
+    '<path fill="url(#dgAzureA)" d="M85.343.003h75.753L82.457 233a12.08 12.08 0 0 1-11.442 8.216H12.06A12.06 12.06 0 0 1 .633 225.303L73.898 8.219A12.08 12.08 0 0 1 85.343 0z"/>'
+    '<path fill="#0078d4" d="M195.423 156.282H75.297a5.56 5.56 0 0 0-3.796 9.627l77.19 72.047a12.14 12.14 0 0 0 8.28 3.26h68.02z"/>'
+    '<path fill="url(#dgAzureB)" d="M85.343.003a11.98 11.98 0 0 0-11.471 8.376L.723 225.105a12.045 12.045 0 0 0 11.37 16.112h60.475a12.93 12.93 0 0 0 9.921-8.437l14.588-42.991l52.105 48.6a12.33 12.33 0 0 0 7.757 2.828h67.766l-29.721-84.935l-86.643.02L161.37.003z"/>'
+    '<path fill="url(#dgAzureC)" d="M182.098 8.207A12.06 12.06 0 0 0 170.67.003H86.245c5.175 0 9.773 3.301 11.428 8.204L170.94 225.3a12.062 12.062 0 0 1-11.428 15.92h84.429a12.062 12.062 0 0 0 11.425-15.92z"/>'
+)
+LOGO_AZURE_VB = (256, 242)
+
+
+def docker_logo(fill: str) -> tuple[str, tuple[float, float]]:
+    """Docker's mark is a single flat path, so it recolours per theme like
+    every hand-drawn icon here, unlike the multi-tone OpenAI/Azure marks
+    above, which look wrong in anything but their own official colours."""
+    d = ("M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 "
+         ".102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.185.185 0 "
+         "00-.185.185v1.888c0 .102.082.185.185.185m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a"
+         ".185.185 0 00-.185.185v1.887c0 .102.082.185.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 "
+         "00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.185.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a"
+         ".185.185 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.185.186.186m5.893 2.715h2.118a.186.186 0 "
+         "00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a"
+         ".185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185"
+         "m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.184-.186h-2.12a.186.186 0 00-.186.186v1.887c0 "
+         ".102.084.185.186.185m-2.92 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 "
+         "00-.184.185v1.888c0 .102.082.185.185.185M23.763 9.89c-.065-.051-.672-.51-1.954-.51-.338.001-.676.03-1.01.087-"
+         ".248-1.7-1.653-2.53-1.716-2.566l-.344-.199-.226.327c-.284.438-.49.922-.612 1.43-.23.97-.09 1.882.403 2.661-.595"
+         ".332-1.55.413-1.744.42H.751a.751.751 0 00-.75.748 11.376 11.376 0 00.692 4.062c.545 1.428 1.355 2.48 2.41 3.124 "
+         "1.18.723 3.1 1.137 5.275 1.137.983.003 1.963-.086 2.93-.266a12.248 12.248 0 003.823-1.389c.98-.567 1.86-1.288 "
+         "2.61-2.136 1.252-1.418 1.998-2.997 2.553-4.4h.221c1.372 0 2.215-.549 2.68-1.009.309-.293.55-.65.707-1.046l.098-.288Z")
+    return f'<path fill="{fill}" d="{d}"/>', (24, 24)
 
 
 def page_icon(x: float, y: float, s: float, *, fill: str, stroke: str) -> str:
@@ -578,7 +603,7 @@ def retrieval_modes(c: dict) -> str:
 # 4. architecture
 # --------------------------------------------------------------------------- #
 # Claim: the whole application is one container. A browser is the one thing
-# it answers to; a model endpoint, a database, and a local storage folder are
+# it answers to. A model endpoint, a database, and a local storage folder are
 # the three things it depends on behind that.
 #
 # The one detail worth the reader's attention is what does NOT get its own
@@ -608,7 +633,9 @@ def architecture(c: dict) -> str:
     kx, ky, kw, kh = 330, 60, 420, 440
     o.append(rect(kx, ky, kw, kh, fill="none", stroke=c["rule"], rx=12, sw=1.6,
                   dash="6 5"))
-    o.append(cube_icon(kx + 18, ky + 16, 20, stroke=c["accent"]))
+    docker_inner, docker_vb = docker_logo(c["accent"])
+    o.append(brand_logo(kx + 28, ky + 26, 22, docker_inner,
+                        view_w=docker_vb[0], view_h=docker_vb[1]))
     o.append(text(kx + 54, ky + 34, "APPLICATION CONTAINER", size=10,
                   fill=c["accent"], weight="700", spacing=1.4))
     o.append(text(kx + kw - 18, ky + 34, "one image, one port", size=11,
@@ -629,15 +656,22 @@ def architecture(c: dict) -> str:
 
     rx0, rw = 830, 280
     cy_cloud = 128
-    o.append(cloud_icon(rx0 + rw / 2, cy_cloud, 1.05, fill=c["panel"], stroke=c["subtle"]))
+    # OpenAI's mark is white-on-black by brand guideline, not white-on-nothing,
+    # so it needs its own dark backdrop rather than the light `panel` fill
+    # every other card in this figure uses. That backdrop is deliberately
+    # fixed-colour, not `c["ink"]`: `ink` flips to near-white in the dark
+    # palette, which would erase a white glyph exactly when the page goes dark.
+    o.append(rect(rx0 + rw / 2 - 30, cy_cloud - 30, 60, 60, fill="#0b0b0f", rx=14))
+    o.append(brand_logo(rx0 + rw / 2, cy_cloud, 34, LOGO_OPENAI,
+                        view_w=LOGO_OPENAI_VB[0], view_h=LOGO_OPENAI_VB[1]))
     o.append(text(rx0 + rw / 2, cy_cloud + 44, "Model endpoint", size=14,
                   fill=c["ink"], anchor="middle", weight="700"))
     o.append(text(rx0 + rw / 2, cy_cloud + 64, "OpenAI-compatible, any host",
                   size=11, fill=c["muted"], anchor="middle"))
 
     cy_db = 300
-    o.append(cylinder_icon(rx0 + rw / 2, cy_db - 34, 78, 68, fill=c["panel"],
-                           stroke=c["panelrule"]))
+    o.append(brand_logo(rx0 + rw / 2, cy_db, 56, LOGO_AZURE,
+                        view_w=LOGO_AZURE_VB[0], view_h=LOGO_AZURE_VB[1]))
     o.append(text(rx0 + rw / 2, cy_db + 52, "Cosmos DB", size=14, fill=c["ink"],
                   anchor="middle", weight="700"))
     o.append(text(rx0 + rw / 2, cy_db + 72, "records · edges · vectors", size=11,
@@ -664,18 +698,21 @@ def architecture(c: dict) -> str:
     return svg(W, H, "".join(o),
                title="One container, three things outside it",
                desc="A browser talks over HTTPS to a single application "
-                    "container holding FastAPI, the retrieval agent and the "
-                    "ingestion pipeline. The container in turn talks to a "
-                    "model endpoint, a Cosmos DB database, and a local "
-                    "storage folder, drawn as a cloud, a cylinder and a "
-                    "folder respectively.")
+                    "container, marked with the Docker logo and holding "
+                    "FastAPI, the retrieval agent and the ingestion "
+                    "pipeline. The container in turn talks to an "
+                    "OpenAI-compatible model endpoint, marked with the "
+                    "OpenAI logo, a Cosmos DB database, marked with the "
+                    "Azure logo, and a local storage folder, drawn as a "
+                    "plain folder because it is a role rather than a "
+                    "product.")
 
 
 # --------------------------------------------------------------------------- #
 # 5. workflow
 # --------------------------------------------------------------------------- #
 # Claim: DIVA has a short, understandable path from a source PDF to a cited
-# answer. This is the orientation figure; the other figures explain the
+# answer. This is the orientation figure. The other figures explain the
 # individual design choices in more detail.
 # --------------------------------------------------------------------------- #
 def workflow(c: dict) -> str:
