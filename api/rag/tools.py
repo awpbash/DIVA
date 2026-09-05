@@ -222,6 +222,31 @@ def _currency_prefixed(fact_props: dict | None, summary: str | None) -> str | No
     return f"[{tag} · effective {eff}] " + (summary or "")
 
 
+def _review_consensus(props: dict | None) -> dict:
+    """Reviewer-confidence fields, read off whatever node carries the review
+    stamps (an OpsField row, or a KM fact node: ``_propagate_to_km`` in
+    review.py writes the same keys onto both: ``trust``/``verified``,
+    ``confidence``, ``verifiers``, ``n_votes``, ``disputed``). One derivation
+    so a citation shows the same "verified by N of M" badge everywhere it is
+    backed by a reviewed fact, not only on the structured field-lookup tools
+    that happened to read it first."""
+    props = props or {}
+    if props.get("trust") == "human_validated" or props.get("verified"):
+        field_trust = "human_validated"
+    elif props.get("disputed"):
+        field_trust = "disputed"
+    else:
+        field_trust = None
+    return {
+        "field_trust": field_trust,
+        "verified_by": (list(props.get("verifiers") or []) or None),
+        "verify_confidence": (float(props["confidence"])
+                              if props.get("confidence") is not None else None),
+        "verify_votes": (int(props["n_votes"])
+                         if props.get("n_votes") is not None else None),
+    }
+
+
 def _row_to_citation(r: dict, *, default_score: float = 0.0) -> Citation:
     fact_labels = r.get("fact_labels") or []
     fact_label = next(
@@ -255,11 +280,29 @@ def _row_to_citation(r: dict, *, default_score: float = 0.0) -> Citation:
         row_context=r.get("row_context"),
         linked_context=_linked_context(r),
         score=float(r.get("score") if r.get("score") is not None else default_score),
+        **_review_consensus(fact_props),
     )
 
 
+def _verification_boost(c: Citation) -> float:
+    """A nudge, not a gate: unreviewed evidence must stay fully citable (most
+    of the corpus has no review yet, and a relevant unreviewed clause beats an
+    irrelevant reviewed one), so this only tips close calls rather than
+    overriding topical relevance. More reviewers moves it further, capped so
+    a single vote isn't indistinguishable from a five-person consensus.
+    Disputed evidence (verifiers actively disagree) gets the opposite nudge."""
+    if c.field_trust == "human_validated":
+        return 0.05 + 0.01 * min(c.verify_votes or 1, 5)
+    if c.field_trust == "disputed":
+        return -0.05
+    return 0.0
+
+
 def _rank_citations(citations: list[Citation], k: int | None = None) -> list[Citation]:
-    """Dedupe by citation id, then prefer stronger tiers at equal score."""
+    """Dedupe by citation id, then rank by relevance with a verification
+    nudge, then prefer stronger tiers at equal score. A `k` cutoff drops the
+    lowest-priority items, so the nudge is what lets a well-reviewed clause
+    survive a truncation an equally-relevant unreviewed one wouldn't."""
     tier_rank = {"canonical": 0, "reference": 1, "raw": 2, "layout": 3}
     by_id: dict[str, Citation] = {}
     for c in citations:
@@ -267,17 +310,17 @@ def _rank_citations(citations: list[Citation], k: int | None = None) -> list[Cit
             continue
         existing = by_id.get(c.evidence_id)
         if existing is None or (
-            c.score,
+            c.score + _verification_boost(c),
             -tier_rank.get(c.confidence_tier or "", 9),
         ) > (
-            existing.score,
+            existing.score + _verification_boost(existing),
             -tier_rank.get(existing.confidence_tier or "", 9),
         ):
             by_id[c.evidence_id] = c
     out = sorted(
         by_id.values(),
         key=lambda c: (
-            -c.score,
+            -(c.score + _verification_boost(c)),
             tier_rank.get(c.confidence_tier or "", 9),
             c.page_no,
             c.evidence_id,
@@ -1694,12 +1737,6 @@ def _ops_row_to_citation(r: dict) -> Citation:
     if r.get("carried_from"):
         summary += (f" · carried over from {r['carried_from']} "
                     f"(unchanged by the pinned document)")
-    if r.get("trust") == "human_validated":
-        field_trust = "human_validated"
-    elif r.get("disputed"):
-        field_trust = "disputed"
-    else:
-        field_trust = None
     return Citation(
         evidence_id=f"ops:{r['ops_id']}",
         citation_kind="evidence_span",
@@ -1713,11 +1750,8 @@ def _ops_row_to_citation(r: dict) -> Citation:
         fact_id=r["ops_id"],
         fact_summary=summary,
         score=0.97 if r.get("verified") else 0.93,
-        field_trust=field_trust,
-        verified_by=(list(r.get("verifiers") or []) or None),
-        verify_confidence=(float(r["confidence"]) if r.get("confidence") is not None else None),
-        verify_votes=(int(r["n_votes"]) if r.get("n_votes") is not None else None),
         field_value=(str(r["value"]) if r.get("value") not in (None, "") else None),
+        **_review_consensus(r),
     )
 
 
