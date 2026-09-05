@@ -17,6 +17,7 @@ stages are all idempotent/cached, so re-clicking Extract resumes where it left o
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -392,8 +393,10 @@ async def upload_document(file: UploadFile,
         raise HTTPException(400, "only PDF files are supported")
     fid = (folder_id or "").strip() or None
     # Reject an unknown folder up front: the folder_id becomes the family group
-    # string, and a typo would silently start a family of one.
-    if fid and not registry.get_folder(fid, cfg=_CFG):
+    # string, and a typo would silently start a family of one. to_thread: this
+    # is a synchronous sqlite read on a route that runs on the shared event
+    # loop (see api/appdb.py's _conn() for why that matters).
+    if fid and not await asyncio.to_thread(registry.get_folder, fid, cfg=_CFG):
         raise HTTPException(400, f"unknown folder {fid!r}")
     intake = _validate_intake(relation, parent_doc_id,
                               document_type, document_date)
@@ -458,8 +461,9 @@ async def upload_document(file: UploadFile,
         if _job_claim(doc_id, kind="refresh", stage="starting…", error=None):
             threading.Thread(target=_run_km_refresh, args=(doc_id,), daemon=True).start()
     if not already:
-        appdb.log_event(_admin["email"], "document", "uploaded", target=stem,
-                        detail=doc_id)
+        await asyncio.to_thread(
+            appdb.log_event, _admin["email"], "document", "uploaded",
+            target=stem, detail=doc_id)
     return {"ok": True, "doc_id": doc_id, "title": stem, "already_known": already,
             "extracting": not already_in_kb}
 

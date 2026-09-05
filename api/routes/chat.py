@@ -38,6 +38,7 @@ On error:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -224,7 +225,12 @@ async def _stream(req: ChatRequest, role: str, email: str = "") -> AsyncIterator
             by_class: dict[str, int] = {}
             for c in exposed:
                 by_class[c.sensitivity] = by_class.get(c.sensitivity, 0) + 1
-            appdb.log_event(
+            # to_thread: appdb's sqlite calls are synchronous, and this route
+            # runs on the shared event loop, so a call made directly here
+            # would freeze every other request for however long the write
+            # takes. See api/appdb.py's _conn() for the full reasoning.
+            await asyncio.to_thread(
+                appdb.log_event,
                 email, "confidential_access", "viewed confidential field(s)",
                 target=", ".join(sorted({c.doc_id for c in exposed})),
                 detail=", ".join(f"{n} {cls}" for cls, n in sorted(by_class.items())))
@@ -244,8 +250,11 @@ async def _stream(req: ChatRequest, role: str, email: str = "") -> AsyncIterator
         doc_trust = await trust_mod.review_status_async()
         # Verifier display names for the badge tooltip ("Verified by Alias Bin
         # Othman…"): one accounts read per answer, emails fall back to themselves.
-        verifier_names = ({u["email"]: (u.get("name") or u["email"]) for u in appdb.list_users()}
-                          if any(c.verified_by for c in citations) else {})
+        # to_thread for the same reason as the log_event call above.
+        verifier_names = {}
+        if any(c.verified_by for c in citations):
+            users = await asyncio.to_thread(appdb.list_users)
+            verifier_names = {u["email"]: (u.get("name") or u["email"]) for u in users}
         cite_dicts = []
         for c in citations:
             d = c.model_dump()
@@ -364,10 +373,11 @@ async def _stream(req: ChatRequest, role: str, email: str = "") -> AsyncIterator
         # free. log_usage never raises.
         totals = meter.totals()
         if email and totals.get("calls"):
-            appdb.log_usage(email, "chat",
-                            prompt_tokens=totals["prompt_tokens"],
-                            completion_tokens=totals["completion_tokens"],
-                            calls=totals["calls"])
+            await asyncio.to_thread(
+                appdb.log_usage, email, "chat",
+                prompt_tokens=totals["prompt_tokens"],
+                completion_tokens=totals["completion_tokens"],
+                calls=totals["calls"])
 
 
 @router.post("/chat")
