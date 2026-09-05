@@ -1,422 +1,233 @@
 # Define a document domain
 
-DIVA keeps the reusable document intelligence engine separate from the
-vocabulary of a particular document collection. A domain describes its
-document types, graph structure, field schema, and evidence rules through
-configuration, so contributors can adapt the application without changing
-the core engine.
+A domain is the set of document types, fields, relationships, and review rules
+for one DIVA instance. The application code is shared; the domain files tell it
+what to look for.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="diagrams/domain-layers-dark.svg">
-  <img alt="Four configuration file cards across the top, labelled you write. Below a dashed line marked the line between configuration and code, a single dark slab labelled the engine, identical for every domain, listing the module names a domain author never edits." src="diagrams/domain-layers-light.svg">
-</picture>
+The repository ships `commercial_agreement` as a working example. Copy its
+shape and change the vocabulary for another kind of record.
 
-A worked domain ships in the repository. `commercial_agreement` covers
-licence, supply, and non-disclosure agreements in 22 fields, and is a useful
-starting point for a new domain.
+## The four required files
 
-There are two good ways to begin:
-
-| Starting point | Use it when |
+| File | Answers this question |
 | --- | --- |
-| **Setup wizard** | You want DIVA to draft a first field list from a description, then refine it in the browser |
-| **Configuration files** | You want to understand or control the analyzer, ontology, graph mappings, and field schema directly |
+| `configs/analyzers/<domain>/analyzer.yaml` | Which document and party categories exist? |
+| `configs/ontology/<domain>.yaml` | Which record labels and relationships may be written? |
+| `configs/packs/<domain>.yaml` | How do extracted facts map into records and derived links? |
+| `configs/views/<domain>_ops.yaml` | Which named fields should a reviewer see? |
 
-The wizard can also enable document-chain tracking and cross-document party
-matching. This page explains the files it creates and the additional options
-available when a domain needs more detailed behavior.
+The field view is usually the best place to start. Write down the questions a
+person needs answered, then describe the fields that answer them.
 
-## 01 · The four files
+## 1. Start with fields
 
-| File | Answers | Format |
-| --- | --- | --- |
-| `configs/analyzers/<domain>/analyzer.yaml` | What kinds of thing exist in this document, what roles they play, and when a PDF counts as this document type | YAML |
-| `configs/ontology/<domain>.yaml` | What may exist in the graph: node labels, edge types, identity hubs | YAML |
-| `configs/packs/<domain>.yaml` | The build contract. How raw extraction maps onto graph nodes, and what may be derived from what | YAML |
-| `configs/views/<domain>_ops.yaml` | **The field schema.** What to capture per document, its type, and how its evidence is found | YAML |
-
-They are not four views of one thing. Each constrains the next:
-
-```
-analyzer      what the reader is allowed to notice
-   ↓
-ontology      what may exist in the graph at all
-   ↓
-pack          how a noticed thing becomes a graph node, and what follows from it
-   ↓
-ops view      which of those become named fields a human verifies
-```
-
-Anything the analyzer never notices cannot reach the graph. Anything the pack
-does not map is quarantined rather than guessed. Anything not in the ops view
-is searchable text but not a verified field.
-
-## 02 · Start from the questions, not the documents
-
-Write the ops view first, even though it is the last file in the chain.
-
-The temptation is to start by cataloguing everything in your documents. That
-produces a schema of two hundred fields nobody verifies. Start instead from
-the ten questions people actually ask, work back to the values that answer
-them, and make those the fields. You can add more later, and the review
-workflow will tell you which ones were worth it.
-
-A field earns its place if a wrong answer to it would cost somebody something.
-
-## 03 · The analyzer
-
-Declares what the reader is allowed to notice, and when a document is yours.
+A field has a stable key, a human title, a value type, and guidance for finding
+its evidence.
 
 ```yaml
-id: commercial_agreement
-version: 1.0
+license_fee:
+  title: Licence Fee
+  type: value
+  multiplicity: 1
+  hint: "The fee payable for the licence or subscription."
+  source:
+    mechanism: value
+    label: Payment
+```
+
+Keep one idea per field. If users need the amount, currency, and effective date
+separately, define fields that can be checked separately rather than asking one
+field to contain a paragraph.
+
+Useful value types in the shipped view include text, value, date, boolean, and
+lists. Check the existing ops view and its schema definitions before adding a
+new shape.
+
+## 2. Describe the document types
+
+The analyzer identifies the categories used by the document reader and the
+party roles used by the relationship builder. Start from the shared
+`_universal` analyzer and override only what belongs to the domain.
+
+```yaml
 extends: _universal
-
-classify_when:
-  any:
-    - "doctype matches '(license|licence|distribution|supply)[ _]agreement'"
-    - "title contains 'License Agreement'"
-
 categories:
-  - organization
-  - person
-  - money
-  - date
-  - obligation
-  - right
-  - warranty          # this domain's own concept, not in the universal set
-
-roles:
-  organization: [disclosing_party, receiving_party, licensor, licensee]
-  person:       [signatory, notice_recipient]
-  money:        [license_fee, minimum_commitment, liability_cap]
-  right:        [termination_for_convenience, audit, assignment, renewal]
+  - agreement
+  - amendment
+party_roles:
+  - licensor
+  - licensee
 ```
 
-`extends: _universal` inherits the categories every document type has. Your
-file adds what is specific and narrows what is not needed. A domain with no
-physical equipment simply does not list an equipment category, and the whole
-equipment half of the engine stays out of its way.
+The names used here must match the names accepted by the pack and ontology.
+Configuration checks report mismatches before a document is processed.
 
-Role vocabularies are per domain and there is no privileged set. A domain
-whose parties are licensor and licensee is not forced into somebody else's
-supplier and customer world. The party fields in the ops view are validated
-against exactly this list, so a typo fails the build instead of silently
-matching nothing.
+## 3. Define the graph vocabulary
 
-## 04 · The ontology
-
-Declares what may exist in the graph. Node labels grouped into layers, edge
-types, and the identity hubs that cross-document resolution links into.
+The ontology is the allowed vocabulary for stored records and relationships. It
+should include every label the loader writes and no labels that the domain does
+not use.
 
 ```yaml
-doctype: commercial_agreement
-version: 1
-
-layers:
-  document:   [Document, Agreement]
-  layout:     [Section, Block]
-  fact:       [Party, Location, Payment, Date, Obligation, Right, Warranty]
-  provenance: [FactMention]
-  evidence:   [EvidenceSpan]
-  identity:   [CanonicalParty, CanonicalJurisdiction]
-  quarantine: [Proposal]
+nodes:
+  - Document
+  - Agreement
+  - Party
+edges:
+  - AMENDS
+  - SUPERSEDES
 ```
 
-The layers are not decorative. `evidence` is what the PDF viewer draws,
-`identity` is what mentions resolve into instead of minting duplicates, and
-`quarantine` is where unmapped content goes so it is reviewable rather than
-lost.
+The `provenance` value on an edge says how it is created, for example by the
+loader, deterministic derivation, or a text match. Model output does not create
+an unreviewed graph edge by itself.
 
-The layers are not the whole file. An `identity:` block sits alongside them and
-drives three things that are easy to miss:
+## 4. Describe the build pack
 
-```yaml
-identity:
-  canonical_roles: [disclosing_party, receiving_party, licensor, licensee]
-  legal_suffixes: [inc, corp, llc, ltd, limited, plc, gmbh, pte]
-  generic_tokens: [confidential, disclosure, licence]
-```
-
-`canonical_roles` names the PRINCIPAL parties, the ones a document is between,
-as opposed to the signatories and notice contacts it also names. Question
-scoping and the corpus catalog use it, and so does the guard that refuses to
-mint a canonical entity from a bare role word: without your roles listed here,
-"the Receiving Party" gets its own entity and real counterparties resolve onto
-it.
-
-`legal_suffixes` are peeled when matching entity names, so one company written
-three ways is one node.
-
-`generic_tokens` are the words your corpus uses so often that they identify
-nothing. The retrieval scoper drops them before matching a question against
-entity names. Note how little two domains share here: a stopword set is domain
-vocabulary, which is exactly why it cannot live in the engine.
-
-The analyzer's category list and this file's fact labels have to agree. A test
-enforces it, because a mismatch means content is extracted and then has
-nowhere to live.
-
-## 05 · The pack
-
-The build contract, and the only file where the mapping from messy reality to
-clean structure lives.
+The pack connects the field results to the knowledge-store records. Extend
+`configs/packs/_base.yaml` and declare the fact types, identity hubs, derived
+edges, and aggregation rules that apply to the domain.
 
 ```yaml
-doctype: commercial_agreement
 extends: _base
-
 fact_types:
-  organization:
-    label: Party
-    key: party_id
-    raw_labels: [name-or-org, organization, company]
-    shape: '{"name": "<full legal name>", "notice_address": "<address or null>"}'
-    bundling: 'Bundle stubs referring to the SAME organization across pages.'
-    properties: [party_id, doc_id, name, normalized_name, role, address]
-    filterable: [entity_type, role, normalized_name, name]
+  - license_fee
+  - initial_term
+edges:
+  derived:
+    - AMENDS
 ```
 
-`raw_labels` is the piece that does the real work. Models return "name-or-org"
-one day and "organization" the next, and this is where that variance is
-absorbed once, declaratively, rather than by a dozen conditionals scattered
-through the loader.
+The pack is a closed contract. If an extracted label is not declared, DIVA
+keeps it in the quarantine records for review rather than adding a new record
+type silently.
 
-The set is closed. Anything a model returns that is not mapped here is
-quarantined as a proposal for review. It is never invented into the graph and
-it is never dropped.
+## Document relationships
 
-`_base.yaml` holds everything that is true of every document type. Your pack
-declares only what is specific, and inherits the rest.
+Amendment chains need a mapping from the domain's field names to six roles:
 
-## 06 · The ops view: the field schema
-
-This is the important one. It is the canonical extraction target, the thing
-the reviewer sees, and the thing the scorer grades.
-
-```yaml
-view: commercial_agreement_ops
-extends_pack: commercial_agreement
-version: 1
-
-enums:
-  yes_no: ["Yes", "No", "Not Stated"]     # quote these: bare Yes/No is a boolean
-
-categories:
-  commercial_terms:
-    title: Commercial Terms
-    fields:
-      license_fee:
-        title: Licence Fee
-        type: value
-        multiplicity: 1
-        hint: "The fee payable for the licence or subscription."
-        source:
-          mechanism: value
-          label: Payment
-          match: {parameter_any: [license_fee, licence_fee, subscription_fee]}
-```
-
-### Value types
-
-| `type` | For |
+| Role | Meaning |
 | --- | --- |
-| `text` | A short string |
-| `number` | A bare number |
-| `value` | A quantity with a unit or currency, kept as a structured amount so it can be summed |
-| `enum` | One of a closed list, declared under `enums` and referenced by `values_ref` |
-| `presence_enum` | Whether something is present at all, usually Yes / No / Not Stated |
-| `free_text` | A verbatim span, for clauses you want quoted rather than parsed |
-| `reference` | An identifier that points at something outside the document |
-| `equipment` | A named piece of physical plant, for domains that have any |
+| Document type | What kind of document this is |
+| Sequence | Its position in the family |
+| Relationship | The term that describes the link |
+| Date | The document date |
+| Parent | Which earlier document it changes |
+| Effective date | When the change takes effect |
 
-### Evidence mechanisms
-
-`source.mechanism` says how a field's value and its evidence are found. This
-is what keeps every value anchored.
-
-| Mechanism | How the value is found |
-| --- | --- |
-| `value` | A monetary or quantitative fact of a given label, matched on parameter name |
-| `party` | A party playing a named role, from the recitals or the signature block |
-| `enum` | A fact of a given label, mapped through `role_map` onto your closed vocabulary |
-| `presence_enum` | Whether any matching clause exists at all, keyed on keywords |
-| `free_text` | The verbatim span of a clause, keyed on keywords |
-| `equipment` | A named equipment item, for domains that declare one |
-| `recital` | Filled by the model from the document's opening, including the amendment chain it declares |
-| `llm` | Filled by the model from the field's own description. The mechanism for fields added through the schema editor at runtime |
-| `external` | Not in the document at all. Operational metadata a person or another system supplies |
-
-The first six read structured facts the pipeline already built, so they carry
-their evidence automatically. `recital` and `llm` are filled directly by the
-model, which anchors them as it extracts. `external` has no evidence by
-definition and is shown as such.
-
-### The document family policy
-
-This block is what makes the supersedence walk work for your vocabulary
-instead of somebody else's.
+The names are domain-specific. One view may call the date `agreement_date`; a
+different view may call it `document_date`. Map the role to the field key in the
+`document_relationships` category.
 
 ```yaml
 document_family:
-  document_types: [Agreement, Amendment, Assignment, Side Letter, Notice, Other]
-  relations:
-    amendment: AMENDS
-    amended and restated: SUPERSEDES
-    assignment: NOVATES
   field_roles:
     document_type: document_type
-    ordinal: amendment_ordinal
-    relationship_type: document_type
-    document_date: agreement_date
-    amends_dated: amends_document
+    relationship_type: relationship_type
+    document_date: document_date
+    parent_document: parent_document
     effective_date: effective_date
-  ancillary_types: [exhibit, side letter, ancillary]
 ```
 
-`document_types` is the menu the upload form offers and the only values intake
-accepts. Name what your corpus actually contains. Declare none and a generic
-set is used.
+The mapping lets DIVA order documents and resolve the current value of each
+field separately. A newer document that does not mention a field does not erase
+the earlier value.
 
-`relations` maps the words your documents use onto the graph edges. If your
-world calls it a "variation" rather than an "amendment", say so here.
+Fields that describe the document itself rather than an amendable term can set
+`supersedes: false`. This prevents a later amendment from replacing stable
+metadata such as a party name.
 
-`field_roles` connects the document-family model to the fields in your schema.
-It is worth checking carefully because an incomplete mapping can leave a
-relationship unresolved without producing an obvious configuration error.
+## Evidence settings
 
-The chain walk needs six things from every document: what kind of document it
-is, its position in a sequence, which word declares the relationship, the date
-it is dated, which earlier document it changes, and when the change takes
-effect. Those six ROLES are fixed. The field each one reads is not, because
-your schema names its fields whatever you named them. One domain calls the date
-`agreement_date` and another calls it `document_date`, and both are right.
-
-Map every role to a field key inside your `document_relationships` category. In
-the example above, `relationship_type` maps to `document_type` because this
-domain declares the relationship by what it CALLS the document, matching the
-`relations` keys above it.
-
-The mapping determines how DIVA orders and connects the documents in a family.
-`python -m scripts.setup --check` reports a role pointing at a field your view
-does not declare, while a role naming a field that does not exist fails the
-configuration build directly.
-
-`ancillary_types` names document kinds that state values but are never a link
-in the chain, so an exhibit never becomes the base that an amendment resolves
-against.
-
-Per category, `supersedes: false` excludes it from the walk. Use it for facts
-about the document itself and for stable party identity, which a later
-document must not overwrite:
+Evidence settings say how a field should be found and what a reviewer should
+see. Prefer a mechanism that points to the source text or a known block rather
+than a broad instruction such as “find anything related to payment.”
 
 ```yaml
-parties:
-  title: Parties
-  supersedes: false      # counterparty identity, not an evolving term
+source:
+  mechanism: value
+  label: Payment
+  match:
+    parameter_any: [license_fee, licence_fee]
 ```
 
-### Sensitivity
+The field extractor cites page blocks. The reader supplies their geometry, and
+the review screen uses those rectangles to highlight the evidence.
 
-Field values can be classified, and the classification is enforced on the
-server before anything is sent to a browser:
+Fields whose `mechanism` is `external` are not extracted from the PDF. They are
+populated by another system or by an operator, so the document model is not
+asked to guess them.
+
+## Sensitivity
+
+Classify fields that should not be visible to every role. The API applies the
+classification before results reach the model or the browser.
 
 ```yaml
 sensitivity:
   default_level: general
   categories:
     commercial_terms: confidential
-    parties: confidential
   field_overrides:
-    parties.signatory_name: general     # it is on the public execution page
+    parties.signatory_name: general
 ```
 
-<a id="activate"></a>
+Use the domain's policy file for category-level rules and keep the labels in
+sync with the pack.
 
-## 07 · Activate it
+## Optional files
 
-One deployment serves one domain. Declare it:
+| File | Use |
+| --- | --- |
+| `configs/prompts/field_extract.<domain>.md` | Domain-specific field extraction guidance |
+| `configs/policy/sensitivity.<domain>.yaml` | Restricted categories and role rules |
+| `configs/sections.yaml` | Heading patterns for section splitting |
+| `configs/prompts/chat_*.{domain}.md` | Domain-specific planning, retrieval, or answer wording |
 
-```bash
+An optional domain prompt replaces the selected generic prompt. Keep the
+instructions and examples together so the change is easy to review.
+
+## Activate and validate
+
+One deployment serves one active domain. Set it in the environment:
+
+```dotenv
 VERBATIM_DOMAIN=commercial_agreement
 ```
 
-or in `configs/pipeline.yaml`:
+Or set `domain` in `configs/pipeline.yaml`. If there is exactly one pack, DIVA
+can detect it. If there is more than one and no selection, startup stops rather
+than choosing one silently.
 
-```yaml
-domain: commercial_agreement
-```
-
-If exactly one pack is present under `configs/packs/`, it is detected and you
-need neither. With more than one pack and no declaration, the app refuses to
-start rather than guess, because guessing means extracting your whole corpus
-against the wrong schema.
-
-### Three more files your domain may want
-
-The four files above are the required set. Three optional ones change behaviour
-if you write them, and are worth knowing about because two of them fail quietly
-when they are missing or wrong.
-
-| File | What it does | If you skip it |
-| --- | --- | --- |
-| `configs/prompts/field_extract.<domain>.md` | The extraction persona: the guidance that tells the model what your documents look like and how to read them | A generic persona is used. It works, and it is less accurate than one written for your corpus |
-| `configs/policy/sensitivity.<domain>.yaml` | Which fact labels count as confidential, and which roles are denied them | The fallback file names no labels, so define this file when your domain uses restricted fields. `setup --check` reports a class naming a label your pack does not declare |
-| `configs/sections.yaml` | The heading grammar used to split documents into sections | The built-in legal-drafting patterns are used, which suit contracts and may not suit your genre |
-
-The prompt file resolves the same way everywhere: `<name>.<domain>.md` if you
-wrote one, otherwise the generic `<name>.md`. The chat prompts follow the same
-rule for `chat_planner`, `chat_agent`, and `chat_synth`. An override replaces
-the selected prompt as a whole, so domain-specific guidance stays together and
-can be reviewed as one contribution.
-
-## 08 · Validate the domain before processing documents
-
-Run these local checks before processing a larger document set.
+Run the checks before processing a collection:
 
 ```bash
-python -m scripts.setup --check      # does the domain resolve and compile
-python -m pytest tests/ -q           # the contract tests run over every shipped domain
-python -m scripts.render_ontology    # a readable page of the graph you just declared
+python -m scripts.setup --check
+python -m pytest tests/ -q
+python -m scripts.render_ontology
 ```
 
-The contract tests are parametrised over every domain your checkout ships.
-Adding a domain therefore puts it under the same checks as the shipped example.
-They catch mismatches such as a field pointing at a label the pack does not
-declare, or a party role being spelled differently in two files, before model
-processing begins.
+Then process one representative document and inspect it in **Review**. Check
+the field names, evidence rectangles, blank-value behavior, and document-family
+links before using the domain on a larger set.
 
-Then ingest one representative document and inspect it in the Review tab. A
-small real example gives useful feedback about a schema before the domain is
-applied to a larger collection.
+## Authoring checklist
 
-## 09 · Authoring guidelines
+- Start from questions and fields, not from every phrase in the documents.
+- Keep field names stable and make their hints specific about value shape.
+- Extend `_universal` and `_base` instead of copying shared configuration.
+- Quote bare `Yes` and `No` in YAML.
+- Decide whether a blank means `Not Stated`, unchanged, or an external value.
+- Re-extract after changing the schema; field caches are presence-based.
+- Add a small representative document and expected answers to the tests.
+- Update this guide or the relevant configuration README with the change.
 
-| | |
+## Related references
+
+| Topic | Guide |
 | --- | --- |
-| **Prefer reusable configuration.** | If a document needs its own rule, consider whether the schema or pack needs a field or mapping that can serve the wider domain |
-| **Extend shared configuration.** | Inherit `_universal` and `_base`, then declare only the differences that belong to your domain |
-| **Quote bare `Yes` and `No` in YAML.** | Unquoted, they parse as booleans and your enum may not match the intended values |
-| **Define blank-value behavior.** | A blank can mean "not stated" in a base document and "unchanged" in an amendment, so document-family policy should make that distinction explicit |
-| **Re-extract after schema changes.** | The field cache is presence-based. Run extraction with `force=True` after changing fields so the results reflect the new schema |
-
-## 10 · Two shipped domains, and why there are two
-
-The repository ships `commercial_agreement` as its worked example. The
-project it was extracted from runs a different domain entirely, with a
-physical equipment tier, per-unit tariffs, technical measurements, and a
-completely different party vocabulary.
-
-The two domains are deliberately different in shape rather than only in
-naming. Together they give contributors a concrete way to verify that shared
-engine changes remain adaptable across document families.
-
-## Further reading
-
-| | |
-| --- | --- |
-| The config tree in detail | [configs/README.md](../configs/README.md) |
-| Pack format reference | [configs/packs/README.md](../configs/packs/README.md) |
-| Analyzer format reference | [configs/analyzers/README.md](../configs/analyzers/README.md) |
-| What the graph ends up looking like | [Data model](data_model.md) |
-| Why schema-first at all | [Concepts](concepts.md#schema-first) |
+| Configuration tree | [`configs/README.md`](../configs/README.md) |
+| Pack format | [`configs/packs/README.md`](../configs/packs/README.md) |
+| Analyzer format | [`configs/analyzers/README.md`](../configs/analyzers/README.md) |
+| Pipeline artifacts | [Pipeline overview](PIPELINE_OVERVIEW.md) |
+| Stored records | [Data model](data_model.md) |

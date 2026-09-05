@@ -12,7 +12,8 @@ and counterparties into every copy of the repository.
 
 | File | Shows |
 | --- | --- |
-| `diva-logo.png` | The primary light-background DIVA lockup with a friendly robot, document, and full name |
+| `logo.png` | The mark-only DIVA icon used at the top of the repository README and as a small repository icon |
+| `diva-logo.png` | The light-background DIVA lockup with the friendly robot, document, and full name |
 | `diva-logo-dark.png` | The dark-background DIVA lockup with white line art and the full name |
 | `chat-start.png` | The cold-start screen, with the kinds of question the two retrieval modes handle |
 | `chat-citation.png` | An answer, its citation clicked, and the source clause highlighted on the page |

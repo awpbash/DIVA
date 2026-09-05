@@ -1,187 +1,120 @@
-# Data model: how the knowledge graph is built
+# Data model
 
-> Companion to [`retrieval.md`](retrieval.md). Machine-readable sources of truth:
-> the active domain's [`configs/ontology/`](../configs/ontology/) (graph shape) and
-> [`configs/packs/`](../configs/packs/) files. This doc explains why the model is shaped this way.
->
-> Scope (2026-07): this covers the **fact graph**, the open-vocab typed-fact
-> layer that remains the extraction default. The **aligned KM layer** sits on
-> top: one `OpsField` record per ops-view field per document with trust tier and
-> evidence, a recital-declared document DAG, and per-field supersedence, built
-> deterministically by `pipeline/kb/km.py` (`python -m scripts.build_km`). Both
-> layers share the citation backbone below.
->
-> Where it lives: the whole model is projected into one Azure Cosmos DB NoSQL
-> container. Every node below becomes a record with a `kind`, attachment edges
-> become fields on the child record, and semantic edges become `kind=edge`
-> items (mapping in `storage/migration/port_notes.md`). `pipeline/store/` is
-> the only layer that talks to Cosmos, and `python -m scripts.rebuild_kb`
-> rebuilds the container from `storage/` for free.
+DIVA keeps the document archive on disk and stores a searchable projection in
+Cosmos DB. The split is useful: files preserve the source and intermediate
+artifacts, while the database supports chat, graph views, and structured
+queries.
 
-The one-sentence version: every fact in a contract becomes a node, every node
-carries a chain back to the exact pixels that prove it, every connection is
-either copied from the document or derived by a rule, and mentions of the same
-party resolve to one shared canonical entity so a question can span documents.
-If the answer is highlighted, a reader can trust it.
-
----
-
-## 01 · Lifecycle: PDF to knowledge graph
-
-One input (the document) and two engines: the LLM, which only ever emits facts,
-and deterministic code, which does everything else.
+## From a page to a record
 
 ```mermaid
-flowchart TB
-  PDF["Contract PDF"]
-
-  subgraph EXTRACT["LLM: extraction only"]
-    H["harvest raw spans"] --> N["normalise into 15 fact shapes"] --> V["validate: re-find snippet on page, add bbox"]
-  end
-
-  CJ["canonical.json: the hand-off seam"]
-
-  subgraph LOAD["Deterministic: load.py"]
-    LN["load nodes + loader edges"] --> DE["derive identity, party joins, fact-to-fact edges"]
-  end
-
-  subgraph ALIGN["Deterministic: km.py"]
-    MH["resolve mentions to canonical hubs"] --> DAG["document DAG + per-field supersedence"]
-  end
-
-  G[("Knowledge graph")]
-
-  PDF --> H
-  V --> CJ --> LN
-  DE --> MH
-  DE --> G
-  DAG --> G
+flowchart LR
+    PDF[Original PDF] --> PAGE[Page image]
+    PAGE --> BLOCK[Text blocks + geometry]
+    BLOCK --> FIELD[Field value + evidence]
+    FIELD --> RECORD[Knowledge record]
+    RECORD --> EDGE[Relationship]
+    RECORD --> VECTOR[Embedding]
 ```
 
-The single seam is `canonical.json`. Left of it the LLM reads pixels and
-produces facts. Right of it everything is deterministic: same inputs, identical
-graph, every time.
+## Files on disk
 
----
+| Artifact | Purpose |
+| --- | --- |
+| `storage/raw/` | Source PDFs and intake metadata |
+| `storage/pages/` | Rendered page images |
+| `storage/pages_md/` | Reader-neutral text and block structure |
+| `storage/doc/` | Clean merged document text |
+| `storage/doc_geometry/` | Page-relative rectangles keyed by block id |
+| `storage/fields/` | Domain field values and their evidence |
+| `storage/canonical/` | Canonical extraction records used by loading |
+| `storage/emb_cache/` | Cached vectors |
+| `storage/quarantine/` | Items held for review instead of being discarded |
 
-## 02 · Seven layers, 26 node types
+`doc.json` contains text that is convenient for models and queries. Its
+companion `doc_geometry.json` contains the rectangles needed by the PDF viewer.
+Keeping them separate avoids sending geometry through every text operation while
+preserving the link needed for evidence.
 
-| Layer | Nodes | The question it answers |
-|---|---|---|
-| document | `Document`, `Agreement` | which PDF, which contract (`doc_id = sha256(pdf)[:16]`) |
-| layout | `Section`, `Block` | where on the page this lives, every block keeps page, bbox, embedding |
-| fact | 15 typed labels | what the contract actually says |
-| provenance | `FactMention` | what we saw before cleanup, the raw-span floor |
-| evidence | `EvidenceSpan` | the exact text and pixels that prove a fact |
-| identity | the `Canonical*` hubs your domain declares | is this the same party, term or place as elsewhere |
-| quarantine | `Proposal` | what we refused to trust without a human |
+## Knowledge-store records
 
-## 03 · The fact layer: 15 kinds of fact
+The `kb` Cosmos container holds records, edges, and embeddings. Records are
+partitioned by `pk`; the access code in `pipeline/store/` handles the item shape
+and query details.
 
-The extractor is only ever allowed to emit these. It cannot invent a category.
+The important record groups are:
 
-| Fact | Captures | Example |
-|---|---|---|
-| `Party` | a contracting party or named person | Northwind Logistics Pte Ltd |
-| `Location` | a site, premises, address | the chiller plant room |
-| `Equipment` | a plant or equipment item | a 200 RT magnetic-bearing chiller |
-| `Charge` | a money fact: deposit, fee, lump sum | S$50,000 security deposit |
-| `Rate` | a priced rate per unit per period | S$0.18 per RT-hr |
-| `CostCategory` | a named cost bucket with no amount | "Energy Charge" |
-| `Formula` | a tariff or adjustment calculation | the consumption-charge formula |
-| `Date` | a typed date | commencement date |
-| `Measurement` | a quantified parameter | supply temperature 6 °C |
-| `Obligation` | who must do what, by when | the Supplier shall maintain... |
-| `Right` | who may do what | the Customer may terminate if... |
-| `Condition` | an if / subject-to clause gating other facts | "subject to early termination" |
-| `Event` | a trigger occurrence | an Event of Default |
-| `DefinedTerm` | a capitalised term and its definition | "Commissioning" means... |
-| `Schedule` | an attached schedule or annex | Appendix 1, Equipment List |
+| Group | Represents |
+| --- | --- |
+| Documents | A source document, its metadata, date, type, and family membership |
+| Fields and facts | Values extracted from a document, including status and source |
+| Parties and sites | Canonical entities shared by related documents |
+| Evidence | The snippet, page, and rectangles supporting a value |
+| Sections and blocks | Searchable text units with document and page identity |
+| Edges | Declared or derived relationships between records |
+| Vectors | Embeddings attached to searchable records |
 
-Each fact is scoped to one document and carries type-specific properties plus a
-confidence.
+The exact JSON keys are implemented in `pipeline/kb/` and `pipeline/store/`.
+Those modules, rather than this guide, are authoritative when adding a field or
+record type.
 
----
+## Evidence shape
 
-## 04 · Provenance discipline: every edge declares how it got there
+An evidence item connects a value to its source using:
 
-This is the line between "the document said so" and "we worked it out", and it
-is enforced by the ontology, not aspirational.
-
-| Provenance | Meaning | Examples |
-|---|---|---|
-| `loader` | written directly from extraction artifacts, the document contains it | `HAS_SECTION`, the 15 `HAS_*` attachments, `SUPPORTED_BY` |
-| `derived:in_graph` | a deterministic rule over loaded nodes: same input, same edges | `IMPOSED_ON`, `HELD_BY`, `CONDITIONED_ON`, `TRIGGERED_BY`, `RESOLVES_TO` |
-| `derived:text_match` | deterministic string matching over evidence text | `USES_TERM`, `REFERENCES_SCHEDULE` |
-| `asserted:review` | enters the graph only after a human approves a `Proposal` | `LIMITED_BY`, `EXCEPTION_TO` |
-
-The LLM's job stops at emitting atomic facts. It never writes a connection, so
-the graph cannot quietly hallucinate a relationship. Derived fact-to-fact edges
-also record how close the evidence was (`via`: `same_block`, `same_section`, or
-`cross_ref`).
-
-There used to be a further layer here that bound each identity hub to a row in
-an external register of customers and assets that the deployment maintained
-alongside its documents. That register was one firm's master data rather than
-part of the framework, and it has been retired. Resolution now ends at the
-identity hub, which is what makes documents joinable to each other.
-
----
-
-## 05 · Two design choices worth knowing
-
-- **The provenance floor.** Before cleanup (merging duplicates, dropping weak
-  stubs) every raw span is recorded as a `FactMention` with its page geometry.
-  `EvidenceSpan` is the polished citation. `FactMention` is the complete,
-  unfiltered mirror underneath, so a discarded fragment stays searchable and
-  highlightable.
-- **Identity is gated, not greedy.** Only supplier and customer roles mint a
-  `CanonicalParty` (suffix-invariant, so "X Pte Ltd" and "X Private Limited"
-  unify). Signatories and witnesses never do. This keeps cross-document joins
-  high-precision.
-
----
-
-## 06 · Worked example: one fact, end to end
-
-> "The Customer shall pay a security deposit of S$50,000."
-
-```mermaid
-flowchart TB
-  B["Block: page 12, bbox"]
-  FM["FactMention: raw span"]
-  CH["Charge: deposit, 50000, S$"]
-  EV["EvidenceSpan: '...security deposit of S$50,000', page 12 + rects"]
-  CO["Condition: 'subject to clause 4.2'"]
-
-  CH -->|SUPPORTED_BY| EV
-  CH -.->|HAS_MENTION| FM
-  EV -->|CITES_BLOCK| B
-  CH -.->|CONDITIONED_ON via same_block| CO
+```text
+document id
+page number
+source snippet
+block id or row id
+one or more page-relative rectangles
+confidence and review status
 ```
 
-Layout captures the paragraph as a `Block`, and the LLM normalises the money
-span into a `Charge`. The raw span is mirrored as a `FactMention` and the
-polished citation as an `EvidenceSpan` pointing at the exact pixels, then
-deterministic load derives `CONDITIONED_ON` from the adjacent clause. When the
-chatbot answers
-"how much is the deposit?", the UI highlights the precise rectangle on page 12,
-and because the `Agreement` is grounded, the answer can also say which customer
-and site the deposit belongs to. Nothing in the chain was guessed.
+The page-relative rectangle is derived from the reader geometry. For the local
+RapidOCR reader, the block rectangle is the union of the OCR line boxes. Table
+repair can add row rectangles so a table citation highlights the relevant row
+rather than the whole table.
 
----
+## Document families and current values
 
-## 07 · Built since the base schema
+Documents can be connected by relationships such as `AMENDS`, `SUPERSEDES`, or
+`NOVATES`. A family stores the source documents and the order in which they
+relate. Current-value resolution then walks the family separately for each
+field.
 
-- **Versioning / supersedence**, twice over: agreement-level timeline edges
-  detected from recital text (`pipeline/kb/timeline.py`,
-  `AMENDS`/`SUPERSEDES`/`NOVATES`, gated), and the KM layer's document DAG with
-  per-field supersedence (`pipeline/kb/km.py`). Retrieval tags values CURRENT
-  vs superseded (`lookup_current_value`).
-- **LLM-proposed relations** exist as the proposal channel
-  (`relation_propose.py` + `proposal_review.py`): proposals carry evidence and
-  are promoted or rejected through review, never auto-asserted.
+```text
+master agreement ──AMENDS──> first amendment ──AMENDS──> second amendment
+       fee: 48,000              fee: 61,500                 fee: —
+       term: 3 years             term: —                    term: 5 years
+```
 
-Regenerate the mechanical ontology diagram with
-`python -m scripts.render_ontology`, which writes a readable page for whichever
-domain this instance serves.
+The resulting current record is `fee = 61,500` and `term = 5 years`. Silence in
+the latest document does not replace an earlier value. A field that is actually
+removed can be represented as an explicit correction or deletion according to
+the active domain's rules.
+
+## Review status
+
+Field records keep the machine result and the human decision separate. A review
+vote can approve, reject, or correct a value and can attach better evidence.
+The approval counts are configured by `REVIEW_MIN_APPROVALS` and
+`REVIEW_CORRECTION_APPROVALS`.
+
+This history matters when rebuilding the searchable projection: the projection
+can be recreated from extraction files and application review state without
+changing the original PDF.
+
+## Rebuild behavior
+
+Cosmos is a projection, not the only copy of the document data. Rebuild it with:
+
+```bash
+python -m scripts.rebuild_kb
+```
+
+The rebuild uses the local artifacts and cached embeddings. It does not need a
+model call. Back up `storage/`, especially `storage/raw/` and `storage/app.db`.
+
+For the pipeline that produces these records, see [Pipeline overview](PIPELINE_OVERVIEW.md).
+For the query side, see [Retrieval](retrieval.md).

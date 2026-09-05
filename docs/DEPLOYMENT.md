@@ -1,284 +1,176 @@
 # Deployment
 
-This guide covers the path from a local compose stack to a small production
-deployment: choosing the model and knowledge-store endpoints, configuring
-access, starting the application, and protecting its persistent data.
+The production image contains the API, web client, pipeline, scripts, and
+documentation. It expects a persistent directory mounted at `/app/storage` and
+an environment file with the model and database settings.
 
-Read [SECURITY.md](../SECURITY.md) first. The short version is repeated below
-because it changes what a safe deployment looks like.
+## Before deploying
 
----
+Prepare:
 
-## Before you deploy
+- a host that can run Docker Compose;
+- a persistent volume for `storage/`;
+- an OpenAI-compatible model endpoint, or Azure AI Foundry;
+- an Azure Cosmos DB account for a shared deployment; and
+- a reverse proxy or identity layer in front of the application.
 
-**1. Where the model calls go.** Extraction and chat send document text and page
-images to whatever endpoint you configure in `OPENAI_BASE_URL`. If your documents
-cannot go to a third party, point it at an endpoint you control. Nothing else
-leaves the machine.
+The local Cosmos emulator is useful for development. It is not a durable
+production database. Set `COSMOS_URI` and `COSMOS_KEY` to a real account for a
+shared deployment.
 
-**2. Where the knowledge store lives.** The local emulator that ships in the
-compose file is a development tool: not durable, not backed up, not supported for
-production. For anything that matters, create a real Azure Cosmos DB account
-(NoSQL API), set `COSMOS_URI` and `COSMOS_KEY`, and set
-`COSMOS_VECTOR_MODE=native` so search uses the database's own index instead of
-ranking in memory.
-
-The store is a **projection**, not the source of truth. If you lose it,
-`python -m scripts.rebuild_kb` rebuilds it from your files, for free, with no
-model calls. That is worth knowing before you decide how much to spend
-protecting it.
-
-**3. Where the files live.** `storage/` holds every uploaded PDF, every page
-image, and every extraction artifact. **This is the one thing to back up.**
-Attach a persistent volume at `/app/storage`. If your host has no persistent
-disk, set the Azure Blob variables and the app mirrors the directory to blob
-storage and restores it at boot.
-
-**4. What sits in front.** Choose the network boundary and authentication layer
-before making the application reachable by other people.
-
----
-
-## Authentication and network access
-
-**Sign-in is passwordless.** Typing an email address that has an account signs
-you in as that account. No password, no second factor, no identity provider.
-
-That is a sensible default for evaluating the software on your own machine. It
-is not authentication, and an instance reachable from the internet is open to
-anyone who can guess an email address. The app says so in its own log on every
-boot.
-
-You have three reasonable options:
-
-| Option | What it means | When |
-| --- | --- | --- |
-| **Private network only** | The app is reachable from your office network or a VPN and nowhere else | Simplest, and enough for most internal use |
-| **Reverse proxy with real auth** | A proxy in front terminates TLS and authenticates before forwarding | The normal production answer |
-| **`CHAT_API_KEY`** | Every request must carry a shared secret | Useful for basic network gating. It does not identify users, so it complements rather than replaces the options above |
-
-Access control **behind** the login remains server-side. Roles and per-field
-sensitivity are applied before data leaves the API, while the session and
-account implementation can be placed behind the authentication layer selected
-for the deployment.
-
----
-
-## Start a production instance
-
-On a server with Docker installed:
+## Start the production stack
 
 ```bash
-git clone <this repo> && cd diva
+git clone https://github.com/awpbash/diva.git
+cd diva
 cp .env.example .env
 ```
 
-Edit `.env`. At minimum set `OPENAI_API_KEY`, the Cosmos variables for your real
-account, and `BOOTSTRAP_ADMIN_EMAIL` to your own address. Then:
+Set at least `OPENAI_API_KEY`, `COSMOS_URI`, `COSMOS_KEY`, and
+`BOOTSTRAP_ADMIN_EMAIL` in `.env`. Then run:
 
 ```bash
-pip install -r requirements.txt
-python -m scripts.setup --check      # confirms the configuration before you build
-
+python -m scripts.setup --check
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-The production compose file is standalone rather than an overlay, because
-Compose merges list fields by appending and an overlay therefore cannot remove
-the development source mounts. It publishes the port on loopback only, runs
-without the reload watcher, mounts nothing but `storage/`, and rotates its logs.
+The production Compose file:
 
-Check it came up:
+- builds one immutable application image;
+- mounts only `./storage` into the app;
+- binds port 8000 to loopback;
+- disables the development reload process; and
+- writes JSON logs with rotation.
+
+Check the service:
 
 ```bash
-curl -s localhost:8000/healthz     # the process is alive
-curl -s localhost:8000/readyz      # its dependencies answer, with a breakdown
-docker compose -f docker-compose.prod.yml logs -f app
+curl -s http://localhost:8000/healthz
+curl -s http://localhost:8000/readyz
+docker compose -f docker-compose.prod.yml ps
 ```
 
-`/healthz` is liveness only, on purpose. An orchestrator must not kill the
-container because the database blinked. `/readyz` is what a load balancer should
-watch.
+`/healthz` reports process liveness. `/readyz` checks the configured
+dependencies and is the better endpoint for a load balancer.
 
-### A reverse proxy
+## Put authentication in front
 
-Any proxy works. The app serves the API and the web bundle from one origin, so
-there is no route list to maintain and no CORS to configure. Forward everything:
+The built-in local sign-in uses an email address. For a shared instance, put a
+reverse proxy or identity-aware gateway in front, terminate TLS there, and
+forward all paths to the application. The application still applies its own
+roles and sensitivity rules after the request is authenticated.
+
+Example Nginx settings:
 
 ```nginx
-server {
-    listen 443 ssl;
-    server_name diva.example.com;
-
-    # your TLS configuration, and your authentication, here
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Answers stream token by token over server-sent events. Without this,
-        # the proxy holds the whole answer and releases it at the end, which
-        # looks like the app hanging.
-        proxy_buffering off;
-        proxy_read_timeout 300s;
-    }
+location / {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_buffering off;
+    proxy_read_timeout 300s;
 }
 ```
 
-The two settings at the bottom matter more than they look. Chat answers arrive as
-a stream, and a buffering proxy turns a responsive app into one that appears
-frozen for thirty seconds.
+`proxy_buffering off` keeps streamed chat responses visible as they arrive.
+`proxy_read_timeout` gives longer extraction and chat requests time to finish.
 
----
+If a second network gate is useful, set `CHAT_API_KEY`. Clients must then send
+the same value in `X-API-Key`; this is a shared gate, not per-user identity.
 
-## Configure the first account
+## Create accounts
 
-Sign in as the address in `BOOTSTRAP_ADMIN_EMAIL`. That account is created on the
-very first boot, only when there are no accounts at all, so it cannot overwrite
-anything later.
-
-From the admin area, add the accounts that need access and set their roles. Or
-from the command line:
+The account named by `BOOTSTRAP_ADMIN_EMAIL` is created on the first boot when
+the application database has no accounts. Add the remaining accounts from the
+admin screen or the command line:
 
 ```bash
 docker compose -f docker-compose.prod.yml exec app \
-  python -m scripts.accounts add someone@example.com --name "Their Name" --role confidential
+  python -m scripts.accounts add person@example.com --role confidential
+docker compose -f docker-compose.prod.yml exec app \
+  python -m scripts.accounts verifier person@example.com --on
 ```
 
-| Role | Reaches |
+| Role | Access |
 | --- | --- |
-| `admin` | Everything, plus review, accounts, schema editing, upload, feedback |
-| `confidential` | Chat, knowledge, explore, including values tagged confidential |
-| `default` | Chat only, with confidential values withheld server-side |
+| `admin` | All areas, account management, uploads, schema editing, and feedback |
+| `confidential` | Chat, knowledge, and explore, including confidential values |
+| `default` | Chat, with restricted values withheld by the server |
 
-The separate verifier flag opens the review workspace regardless of role.
+Review access is granted by the verifier flag. Set review approval counts in
+`.env` when more than one person will review corrections.
 
-Then upload a PDF. Extraction starts on upload, the document becomes searchable
-when it finishes, and verification happens afterwards without blocking anyone.
+## Back up the right files
 
----
+Back up the whole `storage/` directory, especially:
 
-## Backups
+| Path | Contains |
+| --- | --- |
+| `storage/raw/` | Original PDFs |
+| `storage/app.db` | Accounts, sessions, threads, review votes, and feedback |
+| Remaining `storage/` | Rendered pages, extraction artifacts, geometry, and embedding cache |
 
-Back up **`storage/`**. Everything else is either rebuildable or configuration.
-
-| What | Why | If you lose it |
-| --- | --- | --- |
-| `storage/raw/` | The original PDFs | Gone. Re-upload from wherever they came from. |
-| `storage/app.db` | Accounts, sessions, chat history, verification votes, the schema overlay | **The expensive loss.** Every human verification decision lives here. |
-| `storage/` (the rest) | Page images, extraction artifacts, the embedding cache | Rebuildable, but only by paying for extraction again |
-| The knowledge store | The searchable projection | Free to rebuild: `python -m scripts.rebuild_kb` |
-
-A nightly copy of the whole directory is enough. It is ordinary files and one
-SQLite database.
+The Cosmos container is rebuildable from these files:
 
 ```bash
-docker compose -f docker-compose.prod.yml stop app
-tar czf "diva-$(date +%F).tgz" storage/
-docker compose -f docker-compose.prod.yml start app
+docker compose -f docker-compose.prod.yml exec app \
+  python -m scripts.rebuild_kb
 ```
 
-Stopping the app first is not strictly required, but it removes any question
-about a half-written SQLite file.
+Use a scheduled file backup or volume snapshot. Keep the PDFs and
+`storage/app.db`; losing either requires recovery from a separate source.
 
----
-
-## Updating
+## Updates and schema changes
 
 ```bash
 git pull
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-The image rebuild is the update. Nothing migrates by hand: the app-state database
-adds columns it needs at boot, and the knowledge store is rebuildable.
-
-**After changing anything about the schema or the ontology, rebuild the knowledge
-layer**, which is free:
+After changing the domain schema, ontology, or field rules, re-run extraction
+for affected documents and rebuild the knowledge projection:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec app python -m scripts.rebuild_kb
+docker compose -f docker-compose.prod.yml exec app \
+  python -m pipeline.kb.field_llm --all --force
+docker compose -f docker-compose.prod.yml exec app \
+  python -m scripts.rebuild_kb
 ```
 
-Read [CHANGELOG.md](../CHANGELOG.md) before a major version step.
+Read [CHANGELOG.md](../CHANGELOG.md) before a version update. Keep the image
+and the mounted storage from the same deployment when diagnosing a problem.
 
----
+## Storage without a permanent disk
 
-## Operating it
+If the host has no durable local disk, set `STORAGE_SEED_URL` to a tarball that
+contains a `storage/` directory. DIVA applies it only to an empty volume. For
+ongoing persistence, configure the optional Azure Blob mirror with
+`AZURE_BLOB_ACCOUNT_URL` or `AZURE_STORAGE_CONNECTION_STRING`.
 
-```bash
-# Free, read-only, and safe to run any time
-docker compose -f docker-compose.prod.yml exec app python -m scripts.setup --check
-docker compose -f docker-compose.prod.yml exec app python -m scripts.reconcile_kb
-docker compose -f docker-compose.prod.yml exec app python -m scripts.accounts list
+## Sizing and reader choice
 
-# Free, rewrites the searchable projection from your files
-docker compose -f docker-compose.prod.yml exec app python -m scripts.rebuild_kb
-```
+The workload is quiet while users read and bursty during ingestion. Start with
+2 vCPUs and 2 GB of memory for a small instance, then adjust from observed
+processing time and model rate limits.
 
-`LOG_FORMAT=json`, which the production compose file sets, emits one JSON object
-per line. Every request is logged with its path, status and duration, and the
-retrieval agent logs the tools it chose, which is usually what you want when an
-answer looks wrong.
-
-### What costs money
-
-Two things, both cached, so you pay once:
-
-- **Ingesting a document**, roughly a dollar on the reference corpus, dominated
-  by reading the pages. Re-running is free.
-- **Asking a question**, small change each.
-
-Everything else, rebuilding, scoring, reconciling, the tests, is free and calls
-no model. Per-account token usage is in the admin area.
-
----
-
-## Sizing
-
-One small server is enough for a team. The reference deployment runs comfortably
-in 2 GB of memory with 2 vCPUs, and the load is bursty: idle between questions,
-busy during extraction.
-
-Two knobs matter:
-
-- `VISION_PAGE_CONCURRENCY` (default 4) is how many pages are read in parallel.
-  Raise it to ingest faster, lower it if you hit rate limits.
-- `RENDER_DPI` (default 300) is the page image resolution. Lower is cheaper and
-  faster. Do not go below 200 or OCR accuracy on small print falls away, and the
-  evidence highlights get coarser with it.
-
-If you run local OCR (`READER=rapidocr`, the default), extraction is CPU-bound
-and wants more cores. The cloud reader (`READER=cu`) trades that for one paid
+`VISION_PAGE_CONCURRENCY` controls parallel page work. `RENDER_DPI` controls
+page image size; 300 is the default. The local `rapidocr` reader uses CPU on the
+application host. The `cu` reader shifts page reading to one Azure analysis
 call per document.
 
----
+## Common operational checks
 
-## Deploying somewhere other than a server
+```bash
+docker compose -f docker-compose.prod.yml logs -f app
+docker compose -f docker-compose.prod.yml exec app \
+  python -m scripts.setup --check
+docker compose -f docker-compose.prod.yml exec app \
+  python -m scripts.reconcile_kb
+docker compose -f docker-compose.prod.yml exec app \
+  python -m scripts.accounts list
+```
 
-The image is ordinary and has no host-specific code. It needs an environment
-file, a persistent volume at `/app/storage`, and a reachable Cosmos endpoint.
-
-If your host has **no** persistent disk, two variables cover it:
-
-- `STORAGE_SEED_URL` points at a tarball of a `storage/` directory. On a boot
-  with an empty volume, the app downloads and unpacks it once. It refuses to
-  overwrite a volume that already has content, so it cannot destroy live data.
-- The Azure Blob variables make the app mirror `storage/` to blob storage and
-  restore from it at boot.
-
----
-
-## Troubleshooting
-
-| Symptom | Look at |
-| --- | --- |
-| Will not start | `python -m scripts.setup --check`. It stops at the first blocking problem and names it. |
-| `/readyz` reports the store down | `COSMOS_URI` and `COSMOS_KEY`. The response body breaks it down per dependency. |
-| Answers stream slowly then arrive at once | Proxy buffering. See the nginx block above. |
-| An answer cites the wrong clause | Re-run extraction for that document, then `rebuild_kb`. If it persists, that is a defect worth reporting: evidence fidelity is the thing this project is for. |
-| Highlights vanish on a table | That document skipped a pipeline stage. Re-run extraction for it, which is free if the cache is intact, then `rebuild_kb`. |
-| A frontend change is not showing | The web bundle is baked into the image. Rebuild it. |
+For symptoms and fixes, see [Troubleshooting](troubleshooting.md). For the
+complete environment list, see [Reference](reference.md).

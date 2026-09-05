@@ -1,7 +1,8 @@
 # Figures
 
 The diagrams in the documentation are generated from source in this directory,
-not drawn by hand. Change the source, re-run, commit both.
+not drawn by hand. Change the source, re-run, and commit both the source and
+the generated SVGs.
 
 | Figure | Claim it makes | Source |
 | --- | --- | --- |
@@ -9,6 +10,7 @@ not drawn by hand. Change the source, re-run, commit both.
 | `domain-layers` | A new document type is four files you write. The engine is the same code either way | `make_diagrams.py` |
 | `retrieval-modes` | The question decides the machinery. Money is added up in Python, never by a language model | `make_diagrams.py` |
 | `architecture` | The whole application is one container, talking to exactly three things outside itself | `make_diagrams.py` |
+| `workflow` | The five steps from a PDF to a cited answer | `make_diagrams.py` |
 | `scale` | The same per-field walk runs whether there is one chain or six, and a real chain caught a bug the synthetic one never could | `make_diagrams.py` |
 | `supersedence.gif` | "Current" is resolved per field, by walking backwards until a document sets that field | `supersedence_anim.py` |
 
@@ -58,10 +60,11 @@ detail. A figure carries one idea.
   one artifact changing, anchoring as a physical tether. A figure that could
   describe an unrelated system after relabelling has failed and needs
   redesigning, not retouching.
-- **Different arguments get different visual grammars.** These four
-  deliberately do not share a template. `retrieval-modes` draws its two
-  branches in visibly different styles because the whole point is that they
-  are different kinds of machinery.
+- **Different arguments get different visual grammars.** The figures do not
+  share a template. `retrieval-modes` draws its two branches in visibly
+  different styles because the whole point is that they are different kinds of
+  machinery. `workflow` stays deliberately simple because it is an orientation
+  map, not a system diagram.
 - **Arrows only where direction matters.** The evidence threads have no
   arrowheads, because clicking the value opens the page and clicking the page
   finds the value. A head would be a lie in one direction.
@@ -81,12 +84,9 @@ which stays readable in a diff. [Architecture](../architecture.md) has the
 full set, including the request sequence and the document-arrival flow that
 this figure deliberately leaves out.
 
-`architecture` is the one exception, and it earns its place here rather than
-as Mermaid: a top-level component map is something a reader keeps coming back
-to, so it is worth the icon vocabulary (the isometric box, the cylinder, the
-folder, the cloud, all in `make_diagrams.py`) that a plain flowchart box
-cannot give it. It draws the same container, the same three things outside
-it, and the same labels as the first diagram in Architecture, so if you
-relabel one, relabel the other. Use Mermaid for an ordinary map of components.
-Use this directory when the diagram is either an argument or the one picture
-a reader should recognise on sight.
+`architecture` and `workflow` earn their place here because they are the two
+figures a new reader is most likely to revisit. They use a small hand-drawn SVG
+icon vocabulary instead of an icon font, which keeps them readable in GitHub's
+light and dark themes. Use Mermaid for ordinary maps of components or API
+sequences; use this directory for a figure that carries a specific visual
+argument.

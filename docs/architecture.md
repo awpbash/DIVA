@@ -1,193 +1,123 @@
 # Architecture
 
-This guide describes the main components, their connections, and where DIVA
-stores state. Read [Concepts](concepts.md) first if you want the design
-reasons behind this structure.
+DIVA has one application container and one knowledge store. The application
+serves the React web client and the FastAPI API from the same origin. It reads
+and writes pipeline files under `storage/`, and projects searchable records to
+Azure Cosmos DB or the local emulator.
 
-## 01 · One image, three layers
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/architecture-dark.svg">
+  <img alt="A browser connects to one DIVA application container containing the web app, API, retrieval code, and ingestion pipeline. The container connects to a model endpoint, Cosmos DB, and the storage folder." src="diagrams/architecture-light.svg">
+</picture>
 
-The whole application is a single container. The React workspace is built into
-it and served by the same process that serves the API, so there is one thing
-to deploy and one port to expose.
+## Runtime components
 
-```mermaid
-flowchart TB
-    subgraph client["Browser"]
-        SPA["React workspace<br/>chat · review · knowledge · explore · admin"]
-    end
-
-    subgraph app["Application container"]
-        API["FastAPI<br/>routes · auth · RBAC"]
-        RAG["Retrieval agent<br/>planner → tools → synthesis"]
-        PIPE["Ingestion pipeline<br/>read → extract → build"]
-    end
-
-    subgraph stores["State"]
-        COSMOS[("Cosmos DB<br/>records · edges · vectors")]
-        DISK[("storage/<br/>PDFs · page images<br/>extractions · app.db")]
-    end
-
-    MODEL["Model endpoint<br/>OpenAI-compatible"]
-
-    SPA <-->|"HTTPS, session token"| API
-    API --> RAG
-    API --> PIPE
-    RAG --> COSMOS
-    RAG --> MODEL
-    PIPE --> DISK
-    PIPE --> COSMOS
-    PIPE --> MODEL
-    API --> DISK
-```
-
-Two relationships in this picture are especially important.
-
-**`pipeline/store/` owns database access.** Queries go through this layer,
-including those initiated by the API. This keeps the emulator and a real
-Cosmos account behind the same interface and keeps storage-specific behavior in
-one place.
-
-**The database is a projection rather than the source archive.** Its contents
-can be rebuilt from `storage/` with `python -m scripts.rebuild_kb`, without
-re-reading documents. This makes ontology changes straightforward to inspect
-and gives operators a repeatable recovery path.
-
-## 02 · Where state lives
-
-| What | Where | Rebuildable |
+| Component | Location | Responsibility |
 | --- | --- | --- |
-| Original PDFs | `storage/pdfs/` | No. This is the only irreplaceable thing |
-| Page images | `storage/pages/` | Yes, free, from the PDFs |
-| Read text with geometry | `storage/canonical/` | Yes, but re-reading costs money |
-| Field extractions | `storage/fields/` | Yes, but re-extracting costs money |
-| Embeddings | `storage/emb_cache/` | Yes, cheaply |
-| Accounts, sessions, chat threads, votes, feedback | `storage/app.db` | No. This is real user data |
-| Graph records, edges, vectors | Cosmos container | Yes, free, from everything above |
+| Web client | `web/` | Chat, review, knowledge, graph, and admin screens |
+| HTTP API | `api/` | Routes, sessions, roles, uploads, and streaming answers |
+| Retrieval | `api/rag/` | Select tools, gather evidence, and format cited answers |
+| Ingestion | `pipeline/` | Render PDFs, read pages, extract fields, and build records |
+| Domain configuration | `configs/` | Fields, document types, graph vocabulary, and prompts |
+| Application state | `storage/app.db` | Accounts, sessions, threads, review votes, and feedback |
+| Document artifacts | `storage/` | PDFs, page images, extracted text, geometry, and caches |
+| Knowledge store | `pipeline/store/` | The only code that talks to Cosmos DB |
 
-Back up `storage/`. Everything else follows from it. The backup section of
-[Deployment](DEPLOYMENT.md) has the specifics.
+The frontend is built during the Docker image build and served by FastAPI. A
+frontend change therefore needs a new image; a backend source mount in the
+development Compose file can be picked up after a restart.
 
-## 03 · A document arriving
+## A document moving through the system
 
 ```mermaid
 flowchart LR
-    PDF["PDF uploaded"] --> READ["Read<br/>OCR or cloud service"]
-    READ --> CANON["Text, blocks, tables<br/>with page geometry"]
-    CANON --> FIELDS["Schema-first extraction<br/>fills your field schema"]
-    FIELDS --> LOAD["Graph build<br/>records, edges, hubs"]
-    LOAD --> KM["Alignment<br/>canonical parties · document DAG"]
-    KM --> Q["Queryable"]
-    Q -.->|"asynchronous, never blocking"| REVIEW["Human verification"]
-    REVIEW -.-> KM
+    PDF[PDF] --> PAGES[Page images]
+    PAGES --> READ[Selected reader]
+    READ --> TEXT[Text + page geometry]
+    TEXT --> FIELDS[Configured fields + evidence]
+    FIELDS --> GRAPH[Records + relationships]
+    GRAPH --> QUERY[Chat and structured queries]
+    FIELDS -. review .-> REVIEW[Human review]
+    REVIEW -. correction .-> FIELDS
 ```
 
-Each stage writes a cached artifact, so re-running is free and the chain is
-resumable. The two stages that spend money are reading the pages and filling
-the fields. Everything after the `canonical` seam is deterministic Python with
-no model involved.
+The selected reader is controlled by `READER`:
 
-The dotted path matters. Verification is not in the line. A document is
-searchable the moment the build finishes, and review upgrades its trust tier
-afterwards.
+| Setting | Reader | Output |
+| --- | --- | --- |
+| `READER=rapidocr` | Local RapidOCR plus the correction/classification pass | Page text, blocks, and OCR-derived geometry |
+| `READER=cu` | Azure Content Understanding | Page text, layout, tables, and geometry from one document analysis call |
 
-Stage-by-stage detail, including what each one writes and what it costs, is in
-[Pipeline overview](PIPELINE_OVERVIEW.md).
+Both readers write the page representation consumed by the later pipeline. The
+default Docker image installs `rapidocr` and `onnxruntime`; it does not install
+the `paddleocr` Python package. RapidOCR uses PP-OCR-derived ONNX models, and
+the local path derives block rectangles from the OCR line boxes. See
+[Pipeline overview](PIPELINE_OVERVIEW.md) for the exact artifacts.
 
-## 04 · A question arriving
+## Where state lives
+
+| Data | Location | Can it be rebuilt? |
+| --- | --- | --- |
+| Original PDFs | `storage/raw/` | No; keep a backup |
+| Rendered pages | `storage/pages/` | Yes, from the PDFs |
+| Text and geometry | `storage/pages_md/`, `storage/doc/`, `storage/doc_geometry/` | Yes, by re-reading the PDFs |
+| Field results | `storage/fields/` and `storage/canonical/` | Yes, by re-running extraction |
+| Embeddings | `storage/emb_cache/` | Yes, by re-embedding |
+| Accounts and review history | `storage/app.db` | No; back it up |
+| Searchable records and edges | Cosmos container | Yes, from the files in `storage/` |
+
+The practical backup unit is the `storage/` directory. The Cosmos projection can
+be rebuilt with `python -m scripts.rebuild_kb`.
+
+## A question moving through the system
 
 ```mermaid
 sequenceDiagram
-    participant U as Browser
+    participant B as Browser
     participant A as API
-    participant P as Planner
-    participant T as Tools
+    participant R as Retrieval
     participant S as Store
-    participant Y as Synthesis
+    participant M as Model
 
-    U->>A: POST /chat, question + session
-    A->>P: classify intent, scope to documents
-    P->>T: tool-calling loop
-    T->>S: vector search, field lookup, aggregation
-    S-->>T: records, filtered by the caller's clearance
-    T-->>Y: evidence bundle
-    Y-->>U: streamed answer with [ev:id] citations
-    U->>A: GET /evidence/{id}
-    A-->>U: page number and rectangles
-    U->>U: highlight the paragraph in the PDF
+    B->>A: POST /chat
+    A->>R: question + session role
+    R->>S: scoped search or field lookup
+    S-->>R: records and evidence
+    R->>M: evidence bundle
+    M-->>A: answer with citation ids
+    A-->>B: streamed answer
+    B->>A: GET /evidence/{id}
+    A-->>B: page and rectangles
 ```
 
-Three properties of this loop guide the implementation.
+The store applies the caller's role before evidence reaches the model or the
+browser. Structured aggregations are calculated in application code. A citation
+guard removes ids that were not part of the evidence returned for that answer.
 
-**Clearance is applied at the source.** The store filters by the caller's role
-before results reach the agent. A user without clearance never receives the
-confidential value in the first place, so the browser is never trusted to hide
-it.
+## Development and production
 
-**Citations are validated, not merely produced.** A guard rejects any evidence
-id the store did not actually return in that turn. A model cannot cite
-something it did not receive, which is the difference between a citation and a
-plausible-looking reference.
-
-**Arithmetic is Python.** Aggregation tools compute totals and comparisons
-directly. The model chooses which tool to call and how to phrase the answer.
-It does not do the sum.
-
-The tool surface and how the planner routes to it are in
-[Retrieval](retrieval.md).
-
-## 05 · The module map
-
-| Path | Role |
-| --- | --- |
-| `pipeline/extraction/` | Readers, schema-first field extraction, evidence anchoring |
-| `pipeline/kb/` | Graph build, derivation, alignment, the document DAG, per-field supersedence |
-| `pipeline/store/` | The only code that talks to the database. Sync and async clients, SQL builder, item shapes |
-| `pipeline/config.py` | Runtime settings from the environment |
-| `api/rag/` | Planner, tool surface, agent loop, synthesis, citation guard, sensitivity policy |
-| `api/routes/` | HTTP surface, one module per area |
-| `api/appdb.py` | SQLite: accounts, sessions, threads, votes, feedback |
-| `web/src/` | The React workspace |
-| `configs/` | The whole domain definition. See [Domains](domains.md) |
-| `scripts/` | Operational commands. See [Reference](reference.md#commands) |
-| `eval/` | The extraction scorer |
-
-The user-facing guides in these areas are indexed from
-[`docs/README.md`](README.md); use them alongside the module map when moving
-between the application layers.
-
-## 06 · Choices worth knowing about
-
-**Cosmos DB NoSQL, one container.** Records, edges and vectors share a single
-container. It runs locally in Docker as an emulator and on Azure unchanged.
-Vector search is exact and in memory during development
-(`COSMOS_VECTOR_MODE=client`) and uses the database's own index on a real
-account (`native`). Same code either way.
-
-**SQLite for application state.** Accounts, sessions, threads and votes are
-small, transactional and local. They do not belong in the document store, and
-they are the one thing in `storage/` that is not rebuildable.
-
-**Passwordless sign-in.** An email address alone signs you in. That is
-demo-grade by design and correct for a laptop. It is not authentication for a
-shared network, and both [SECURITY.md](../SECURITY.md) and
-[Deployment](DEPLOYMENT.md) say what to put in front of it. The app logs its
-own security posture on every boot so an operator can see the answer in the
-log rather than by reading code.
-
-**Server-side roles.** A session carries a role resolved on the server. The
-client never sends its own clearance, and every route is gated. A test sweeps
-the application's own routing table and requires every endpoint to refuse an
-anonymous caller unless it is on a short explicit public list, so a new
-endpoint is protected by default rather than by somebody remembering.
-
-## 07 · What runs where
-
-| | Development | Production |
+| Area | Development | Production |
 | --- | --- | --- |
-| App | `docker compose up -d`, or uvicorn plus the Vite dev server | `docker-compose.prod.yml`, bound to loopback behind your own reverse proxy |
-| Database | Cosmos emulator in Docker | A real Cosmos account, or the emulator if you accept its limits |
-| Vector search | Exact, in memory | The database index |
-| Storage | A local folder | A mounted volume, optionally mirrored to Blob |
-| Logs | Human readable | `LOG_FORMAT=json` |
+| Application | `docker compose up -d` | `docker-compose.prod.yml` |
+| Database | Cosmos emulator | Azure Cosmos DB account or an explicitly managed emulator |
+| Vector search | `COSMOS_VECTOR_MODE=client` | Usually `native` on Azure |
+| Files | Local `storage/` bind mount | Persistent volume, optionally mirrored to Blob |
+| Logs | Human-readable | `LOG_FORMAT=json` |
 
-One image runs in both. Every difference is an environment variable.
+The application image is the same in both cases. Environment variables select
+the model endpoint, document reader, database, storage, and access settings.
+
+## Source map
+
+| Path | Start here when you need to change… |
+| --- | --- |
+| `pipeline/extraction/` | Readers, geometry, field extraction, and validation |
+| `pipeline/kb/` | Record creation, document relationships, and current values |
+| `pipeline/store/` | Cosmos access and query behavior |
+| `api/routes/` | HTTP endpoints |
+| `api/rag/` | Retrieval tools and citations |
+| `web/src/` | The browser workspace |
+| `configs/` | Domain behavior without changing Python |
+| `scripts/` | Setup, rebuild, and operational commands |
+
+For dependency versions and runtime switches, see [Tech stack](tech_stack.md).

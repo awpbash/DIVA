@@ -15,7 +15,7 @@ geometry and differ only in colour, and a figure that drifts from the thing it
 describes is worse than no figure. Editing one function and re-running is the
 only way that stays true.
 
-Five figures, one claim each. If you cannot say the claim in a sentence, the
+Six figures, one claim each. If you cannot say the claim in a sentence, the
 figure is not ready:
 
   evidence-chain   Every value stays tethered to the pixels it came from, and
@@ -26,6 +26,7 @@ figure is not ready:
                    Python, never by a language model.
   architecture     The whole application is one container, talking to exactly
                    three things outside itself.
+  workflow         The five steps from a PDF to a cited answer.
   scale            The same per-field walk runs whether there is one chain or
                    six, and a real chain caught a bug the synthetic one never
                    could.
@@ -188,6 +189,85 @@ def cloud_icon(cx: float, cy: float, s: float, *, fill: str, stroke: str,
          f"C {cx+24*s} {cy-40*s} {cx+58*s} {cy-22*s} {cx+52*s} {cy-1*s} "
          f"C {cx+75*s} {cy-1*s} {cx+77*s} {cy+18*s} {cx+54*s} {cy+18*s} Z")
     return f'<path d="{d}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}" stroke-linejoin="round"/>'
+
+
+def page_icon(x: float, y: float, s: float, *, fill: str, stroke: str) -> str:
+    """A small document icon for the reader-facing workflow figure."""
+    w, h = 54 * s, 70 * s
+    fold = 16 * s
+    body = (f"M {x} {y} H {x+w-fold} L {x+w} {y+fold} V {y+h} "
+            f"H {x} Z")
+    fold_path = f"M {x+w-fold} {y} V {y+fold} H {x+w}"
+    return (f'<path d="{body}" fill="{fill}" stroke="{stroke}" stroke-width="1.8" '
+            f'stroke-linejoin="round"/>'
+            f'<path d="{fold_path}" fill="none" stroke="{stroke}" stroke-width="1.8" '
+            f'stroke-linejoin="round"/>'
+            + line(x + 13*s, y + 38*s, x + 41*s, y + 38*s, stroke=stroke, sw=1.8)
+            + line(x + 13*s, y + 49*s, x + 36*s, y + 49*s, stroke=stroke, sw=1.8)
+            + line(x + 13*s, y + 60*s, x + 41*s, y + 60*s, stroke=stroke, sw=1.8))
+
+
+def scan_icon(x: float, y: float, s: float, *, fill: str, stroke: str,
+              accent: str) -> str:
+    """A scanner/text-box icon: OCR text plus the geometry it supplies."""
+    w, h = 72 * s, 60 * s
+    parts = [rect(x, y + 10*s, w, h - 10*s, fill=fill, stroke=stroke, rx=7, sw=1.8)]
+    parts += [line(x + 13*s, y + 26*s, x + 45*s, y + 26*s, stroke=stroke, sw=1.7),
+              line(x + 13*s, y + 37*s, x + 53*s, y + 37*s, stroke=stroke, sw=1.7),
+              line(x + 13*s, y + 48*s, x + 39*s, y + 48*s, stroke=stroke, sw=1.7)]
+    parts += [rect(x + 49*s, y + 20*s, 13*s, 22*s, fill="none", stroke=accent,
+                   rx=2, sw=1.8),
+              line(x + 7*s, y + 10*s, x + 17*s, y, stroke=accent, sw=1.8),
+              line(x + 55*s, y, x + 65*s, y + 10*s, stroke=accent, sw=1.8)]
+    return "".join(parts)
+
+
+def field_icon(x: float, y: float, s: float, *, fill: str, stroke: str,
+               accent: str) -> str:
+    """A field card with a highlighted value and a verification tick."""
+    w, h = 72 * s, 62 * s
+    parts = [rect(x, y, w, h, fill=fill, stroke=stroke, rx=7, sw=1.8),
+             line(x + 13*s, y + 18*s, x + 47*s, y + 18*s, stroke=stroke, sw=1.7),
+             rect(x + 13*s, y + 28*s, 39*s, 10*s, fill=accent, rx=3, opacity=0.8),
+             line(x + 13*s, y + 48*s, x + 36*s, y + 48*s, stroke=stroke, sw=1.7),
+             circle_icon(x + 58*s, y + 48*s, 7*s, fill=accent, stroke=accent)]
+    parts.append(f'<path d="M {x+54*s} {y+48*s} l {3*s} {3*s} l {6*s} {-7*s}" '
+                 f'fill="none" stroke="{fill}" stroke-width="1.6" '
+                 f'stroke-linecap="round" stroke-linejoin="round"/>')
+    return "".join(parts)
+
+
+def circle_icon(cx: float, cy: float, r: float, *, fill: str, stroke: str) -> str:
+    return (f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{fill}" '
+            f'stroke="{stroke}" stroke-width="1.2"/>')
+
+
+def graph_icon(cx: float, cy: float, s: float, *, fill: str, stroke: str,
+               accent: str) -> str:
+    """Three linked records, kept deliberately simpler than a graph screenshot."""
+    pts = [(cx - 29*s, cy + 17*s), (cx, cy - 22*s), (cx + 29*s, cy + 17*s)]
+    parts = [line(pts[0][0], pts[0][1], pts[1][0], pts[1][1], stroke=stroke, sw=1.8),
+             line(pts[1][0], pts[1][1], pts[2][0], pts[2][1], stroke=stroke, sw=1.8),
+             line(pts[0][0], pts[0][1], pts[2][0], pts[2][1], stroke=accent, sw=1.8)]
+    for i, (px, py) in enumerate(pts):
+        parts.append(circle_icon(px, py, 10*s, fill=accent if i == 1 else fill,
+                                 stroke=accent if i == 1 else stroke))
+    return "".join(parts)
+
+
+def chat_icon(x: float, y: float, s: float, *, fill: str, stroke: str,
+              accent: str) -> str:
+    """A chat bubble with a citation chip."""
+    w, h = 78*s, 58*s
+    bubble = (f"M {x+8*s} {y} H {x+w-8*s} Q {x+w} {y} {x+w} {y+8*s} "
+              f"V {y+h-16*s} Q {x+w} {y+h-8*s} {x+w-8*s} {y+h-8*s} "
+              f"H {x+31*s} L {x+18*s} {y+h+5*s} V {y+h-8*s} H {x+8*s} "
+              f"Q {x} {y+h-8*s} {x} {y+h-16*s} V {y+8*s} Q {x} {y} {x+8*s} {y} Z")
+    return (f'<path d="{bubble}" fill="{fill}" stroke="{stroke}" stroke-width="1.8" '
+            f'stroke-linejoin="round"/>'
+            + line(x + 15*s, y + 22*s, x + 58*s, y + 22*s, stroke=stroke, sw=1.7)
+            + line(x + 15*s, y + 34*s, x + 43*s, y + 34*s, stroke=stroke, sw=1.7)
+            + rect(x + 47*s, y + 39*s, 20*s, 9*s, fill=accent, rx=4))
 
 
 def svg(w: float, h: float, body: str, *, title: str, desc: str) -> str:
@@ -592,7 +672,67 @@ def architecture(c: dict) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# 5. scale
+# 5. workflow
+# --------------------------------------------------------------------------- #
+# Claim: DIVA has a short, understandable path from a source PDF to a cited
+# answer. This is the orientation figure; the other figures explain the
+# individual design choices in more detail.
+# --------------------------------------------------------------------------- #
+def workflow(c: dict) -> str:
+    W, H = 1240, 350
+    o: list[str] = []
+    o.append(text(64, 42, "FROM DOCUMENT TO ANSWER", size=10, fill=c["accent"],
+                  weight="700", spacing=1.6))
+    o.append(text(64, 70, "Five steps, with the source kept beside the result.",
+                  size=16, fill=c["ink"], weight="600"))
+
+    cards = [
+        ("PDF", "source file", page_icon),
+        ("Read", "text + boxes", scan_icon),
+        ("Fields", "named values", field_icon),
+        ("Link", "families + history", graph_icon),
+        ("Answer", "page citation", chat_icon),
+    ]
+    x0, y, cw, ch, gap = 64, 112, 204, 166, 34
+    for i, (name, sub, icon_fn) in enumerate(cards):
+        x = x0 + i * (cw + gap)
+        o.append(rect(x, y, cw, ch, fill=c["panel"], stroke=c["panelrule"],
+                      rx=10, sw=1.2))
+        if icon_fn is page_icon:
+            o.append(icon_fn(x + 75, y + 22, 0.82, fill=c["paper"], stroke=c["accent"]))
+        elif icon_fn is scan_icon:
+            o.append(icon_fn(x + 66, y + 30, 0.82, fill=c["paper"], stroke=c["ink"],
+                             accent=c["accent"]))
+        elif icon_fn is field_icon:
+            o.append(icon_fn(x + 66, y + 32, 0.82, fill=c["paper"], stroke=c["ink"],
+                             accent=c["amber"]))
+        elif icon_fn is graph_icon:
+            o.append(icon_fn(x + cw/2, y + 67, 0.86, fill=c["paper"], stroke=c["ink"],
+                             accent=c["accent"]))
+        else:
+            o.append(icon_fn(x + 64, y + 34, 0.82, fill=c["paper"], stroke=c["ink"],
+                             accent=c["amber"]))
+        o.append(text(x + cw/2, y + 125, name, size=16, fill=c["ink"],
+                      weight="700", anchor="middle"))
+        o.append(text(x + cw/2, y + 148, sub, size=12, fill=c["muted"],
+                      anchor="middle"))
+        if i < len(cards) - 1:
+            o.append(arrow(x + cw + 7, y + ch/2, x + cw + gap - 7, y + ch/2,
+                           stroke=c["accent"], sw=1.8))
+
+    o.append(text(W - 64, H - 24,
+                  "OCR geometry is retained from the reader through to the citation.",
+                  size=11.5, fill=c["muted"], anchor="end"))
+    return svg(W, H, "".join(o),
+               title="From a PDF to a cited answer",
+               desc="A five-step workflow with icons: a PDF is read into text "
+                    "and page boxes, named fields are extracted, document "
+                    "relationships are linked, and a question is answered "
+                    "with a page citation.")
+
+
+# --------------------------------------------------------------------------- #
+# 6. scale
 # --------------------------------------------------------------------------- #
 # Claim: the same per-field walk runs whether there is one chain or six, and
 # a real chain found a bug the synthetic one never could.
@@ -695,6 +835,7 @@ FIGURES = {
     "domain-layers": domain_layers,
     "retrieval-modes": retrieval_modes,
     "architecture": architecture,
+    "workflow": workflow,
     "scale": scale,
 }
 
@@ -703,7 +844,7 @@ def main() -> int:
     for name, fn in FIGURES.items():
         for theme, palette in (("light", LIGHT), ("dark", DARK)):
             path = OUT / f"{name}-{theme}.svg"
-            path.write_text(fn(palette), encoding="utf-8")
+            path.write_text(fn(palette), encoding="utf-8", newline="\n")
             print(f"  {path.relative_to(OUT.parents[1])}  "
                   f"{path.stat().st_size / 1024:.1f} KB")
     return 0
