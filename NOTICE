@@ -29,6 +29,18 @@ caniuse-lite (CC-BY-4.0)
     CC-BY-4.0: https://creativecommons.org/licenses/by/4.0/
 
 
+Example content that carries a notice requirement
+---------------------------------------------------
+
+CUAD dataset (CC-BY-4.0)
+    https://www.atticusprojectai.org/cuad
+    The 19 real contracts under examples/real_world/corpus/ are drawn from
+    the Contract Understanding Atticus Dataset. CUAD's curation and labels
+    are CC-BY-4.0. The underlying contracts are public SEC EDGAR filings.
+    See examples/real_world/README.md for the full source note.
+    CC-BY-4.0: https://creativecommons.org/licenses/by/4.0/
+
+
 Everything else, in summary
 ---------------------------
 
