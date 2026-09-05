@@ -89,8 +89,20 @@ export function useThreads(email: string | null): UseThreadsResult {
           // Restore the history but NOT the stale active pointer — a fresh
           // login lands on a new chat, so typing never silently appends to
           // whichever thread happened to be open last session.
-          const threads = (parsed.threads as Thread[]).filter(t => t.turns.length > 0);
-          setState({ version: SCHEMA_VERSION, activeId: null, threads });
+          const serverThreads = (parsed.threads as Thread[]).filter(t => t.turns.length > 0);
+          setState(prev => {
+            // Merge rather than replace: the server fetch can take a while
+            // (a cold-started instance shows its own "waking up" notice for
+            // up to ~30s), and a message the user sent locally in that
+            // window would otherwise vanish the moment this response lands,
+            // since the thread it created doesn't exist on the server yet.
+            const serverIds = new Set(serverThreads.map(t => t.id));
+            const localOnly = prev.threads.filter(
+              t => t.turns.length > 0 && !serverIds.has(t.id));
+            const threads = [...localOnly, ...serverThreads]
+              .sort((a, b) => b.updatedAt - a.updatedAt);
+            return { version: SCHEMA_VERSION, activeId: null, threads };
+          });
         }
       } catch { /* ignore malformed */ }
     });
