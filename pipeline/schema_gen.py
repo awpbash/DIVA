@@ -1,9 +1,8 @@
 """pipeline/schema_gen.py — generate a brand-new domain's four config files
 from a plain field list, for the setup wizard's "build from scratch" path.
 
-See docs/domains.md for what each file means and
-docs/setup-wizard-plan.md section 3.5/12 for why this module exists at all:
-content vs. structure, kept deliberately separate.
+See docs/domains.md for what each file means. This module exists because of
+one deliberate split: content vs. structure.
 
 CONTENT (the field list: name, type, hint) is whatever the user typed or an
 AI drafted — every generated field lands in the ops-view as

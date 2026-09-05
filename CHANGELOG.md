@@ -58,10 +58,12 @@ published. `pyproject.toml`, `api/__init__.py` and `web/package.json` all carry
 - The container runs as a non-root user.
 - The app logs its security posture on every boot, so an operator can see from
   the log alone whether anything is authenticating requests.
-- `python -m scripts.export_oss` copies the shippable subset of a checkout into
-  a clean tree: allowlist, independent denylist, a content scan for private
-  names and key-shaped strings, and a self-check that the result resolves one
-  domain with a complete config set.
+- `python -m scripts.export_oss`, a maintainer-only tool that never ships in
+  this checkout, copies the shippable subset of a private working tree into a
+  clean one before a release: allowlist, independent denylist, a content scan
+  for private names and key-shaped strings, and a self-check that the result
+  resolves one domain with a complete config set. Nothing a contributor working
+  from this repo needs to run.
 - Contract tests (`*_contract.py`) hold the pack, field-schema and ontology
   contracts over every domain a checkout ships, so the drift gates keep working
   in a copy that carries a different domain.

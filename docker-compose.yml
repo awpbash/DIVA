@@ -15,8 +15,9 @@ services:
     container_name: verbatim_try_cosmos
     restart: unless-stopped
     ports:
-      # 8081 on the host is already taken by the other project's emulator.
-      - "8181:8081"
+      # Override with COSMOS_PORT in .env if 8081 is already taken on your
+      # machine (.env is gitignored, so this stays a per-machine setting).
+      - "${COSMOS_PORT:-8081}:8081"
     environment:
       PROTOCOL: http
     healthcheck:
@@ -44,8 +45,9 @@ services:
       python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
       --reload --reload-dir /app/api --reload-dir /app/pipeline --reload-dir /app/configs
     ports:
-      # 8000 on the host is already taken by the other project's app.
-      - "8100:8000"
+      # Override with APP_PORT in .env if 8000 is already taken on your
+      # machine (.env is gitignored, so this stays a per-machine setting).
+      - "${APP_PORT:-8000}:8000"
     volumes:
       # Uploaded PDFs and every pipeline artifact. The one directory to back up.
       - ./storage:/app/storage

@@ -30,10 +30,16 @@ exit. Two real setups, two different mechanisms:
     is Docker's own marker file, present in every container it starts, and
     is the cheap way to tell those two cases apart.
 
-See docs/setup-wizard-plan.md section 3.6 for why an in-place `os.execvp`
-(safe in `api/boot_seed.py`, which runs before uvicorn ever binds a socket)
-is the wrong model for restarting a worker that already holds a live
-listening socket and connections.
+`api/boot_seed.py` uses an in-place `os.execvp` for its own restart-into-uvicorn
+step, which only works because it runs BEFORE uvicorn ever binds a socket: a
+clean handoff from one process image to the next with nothing live yet.
+Calling `os.execvp` from inside a running request handler instead is a
+different, riskier thing: it replaces the process image of a worker that
+already holds an open listening socket and live connections, and getting the
+new image to either reuse or cleanly release that socket before rebinding is
+exactly the kind of fd-level edge case not worth risking here. A hard exit
+and letting the supervisor bring up a genuinely fresh process, as this module
+does, sidesteps that entirely.
 """
 from __future__ import annotations
 

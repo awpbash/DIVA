@@ -12,8 +12,6 @@
 # --- large working directories ----------------------------------------------
 # storage/ is the runtime volume (bind-mounted by compose), not image content.
 storage/
-railway_storage/
-data/
 web/node_modules/
 web/dist/
 
