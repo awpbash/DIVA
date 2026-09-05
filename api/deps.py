@@ -1,8 +1,8 @@
 """Shared singletons.
 
-Both the Cosmos store and the OpenAI client are connection-pool wrappers —
+Both the Cosmos store and the OpenAI client are connection-pool wrappers,
 expensive to construct, cheap to share. The app's lifespan (see main.py)
-opens them at startup and closes at shutdown; route handlers grab them
+opens them at startup and closes at shutdown, route handlers grab them
 through these getters.
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ from .settings import get_config
 # to pass a Request object.
 _store: Optional[AsyncCosmosStore] = None
 _openai_client: Optional[AsyncOpenAI] = None
-# Embeddings may live behind a different endpoint than chat — a separate client.
+# Embeddings may live behind a different endpoint than chat, so this gets its own client.
 _openai_embed_client: Optional[AsyncOpenAI] = None
 
 
@@ -50,7 +50,7 @@ async def init() -> None:
     """Open the long-lived connections. Idempotent."""
     global _store, _openai_client, _openai_embed_client
     cfg = get_config()
-    # The Azure SDK logs every request at INFO — mute to warnings so app
+    # The Azure SDK logs every request at INFO, mute to warnings so app
     # logs stay readable (structured logging owns the signal).
     logging.getLogger("azure").setLevel(logging.WARNING)
     if _store is None:
@@ -66,7 +66,7 @@ async def init() -> None:
             # compatible endpoint when OPENAI_BASE_URL is set.
             _openai_client = make_async_openai(cfg, timeout=60.0)
         if _openai_embed_client is None:
-            # Separate client — embeddings may use a different base_url/key.
+            # Separate client: embeddings may use a different base_url/key.
             _openai_embed_client = make_async_openai_embed(cfg, timeout=60.0)
     else:
         logging.getLogger("api").warning(

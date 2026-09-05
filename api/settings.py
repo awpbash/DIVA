@@ -19,54 +19,52 @@ class Settings:
     # rather than a frontend rebuild.
     app_name: str = "Verbatim"
     app_tagline: str = "Every answer traced to the clause it came from"
-    # What this deployment CALLS the things it holds. Every screen said
-    # "contract", which is wrong for a corpus of medical records or planning
-    # applications and reads as somebody else's product. Singular and plural,
-    # because English.
+    # What this deployment calls the things it holds, since a hardcoded
+    # "contract" is wrong for a corpus of medical records or planning
+    # applications. Singular and plural, because English.
     document_noun: str = "document"
     document_noun_plural: str = "documents"
 
-    # Vector + graph retrieval. Tight defaults — most chat questions
-    # need 1-3 evidences; bundle padding just dilutes the answer and
+    # Vector + graph retrieval. Tight defaults: most chat questions need
+    # 1-3 evidences, and bundle padding just dilutes the answer and
     # creates messy citation lists in the UI.
     top_k_evidence: int = 6           # EvidenceSpans pulled by vector recall
     top_k_sections: int = 3           # Sections pulled by vector recall
     fact_neighbors: int = 3           # per fact, how many other facts in same Section to include
-    # Floor on retrieval relevance — citations whose score falls below
-    # this get dropped before reaching synth. Tuned for cosine on
-    # text-embedding-3-large; raise if you see noise creeping back in.
+    # Floor on retrieval relevance: citations below this score are dropped
+    # before reaching synth. Tuned for cosine on text-embedding-3-large,
+    # raise if noise creeps back in.
     min_relevance_score: float = 0.55
 
-    # Synth — gpt-5.4 (full) follows the synth prompt's citation
-    # discipline + TOTALS preamble much more reliably than mini. The
-    # eval showed mini dropping citation segments and undercounting
-    # aggregations even with explicit prompt guards.
-    synth_model_override: str | None = "gpt-5.4-mini"
-    # Planner with mini was misclassifying "who is the supplier?" as
-    # `intent=definition` (because "Supplier" is a capitalised contract
-    # term), which then biased the agent toward defined_term lookups.
-    # Full gpt-5.4 reads the rule about "explicitly asks for a definition".
+    # Synth uses full gpt-5.4: mini has been observed collapsing an
+    # aggregation caveat into a false zero and dropping the real citation
+    # on a money-terms question, and a wrong number here is the worst
+    # possible answer. Full does not make this mistake.
+    synth_model_override: str | None = "gpt-5.4"
+    # Planner: mini is fine here. The prompt rule requiring an explicit
+    # request for a definition keeps capitalised role terms like
+    # "supplier" from being misread as intent=definition, so mini is not
+    # costing accuracy.
     planner_model_override: str | None = "gpt-5.4-mini"
     max_synth_tokens: int = 4000
 
-    # Agent loop — gpt-5.4 for tool-routing accuracy. mini was choosing
-    # vector_search over typed lookups even when the prompt explicitly
-    # routed "who is the supplier" → Party.role.
+    # Agent loop: mini is fine here too. It occasionally retries a typed
+    # lookup with reworded queries before giving up, a few extra cheap
+    # round trips, but lands on the same correct answer as full.
     agent_max_steps: int = 5                  # tool-call rounds before forced stop
     agent_model_override: str | None = "gpt-5.4-mini"
 
-    # Kill-switch for agent tools. Names listed here (comma-separated in the
-    # CHAT_DISABLED_TOOLS env var) are stripped from the schemas the agent
-    # sees AND from dispatch — disabling a misbehaving tool is a restart,
-    # not a code change. Rollback lever for every new retrieval tool.
+    # Kill-switch for agent tools. Names listed here (comma-separated in
+    # the CHAT_DISABLED_TOOLS env var) are stripped from both the schemas
+    # the agent sees and from dispatch, so disabling a misbehaving tool is
+    # a restart, not a code change.
     disabled_tools: tuple[str, ...] = ()
 
-    # CORS — Vite default + safe loopback. In dev we also accept any
-    # localhost/loopback port via cors_origin_regex so a fallback Vite
-    # port (5174, 5175, ...) doesn't break the chat preflight.
-    # Private-LAN (RFC1918) origins are included so a `vite --host` demo
-    # works from other machines on the office network; this never matches
-    # a public internet origin.
+    # CORS: Vite default plus safe loopback, and in dev any localhost or
+    # loopback port so a fallback Vite port doesn't break the preflight.
+    # Private-LAN (RFC1918) origins are included for `vite --host` demos
+    # from other machines on the office network. Never matches a public
+    # internet origin.
     cors_origins: tuple[str, ...] = (
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -79,11 +77,11 @@ class Settings:
         r"|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?"
     )
 
-    # Optional API-key gate. When CHAT_API_KEY is set in the environment,
-    # every route except /healthz requires the same value in an
-    # `X-API-Key` header (or `?api_key=` for direct-link downloads).
-    # Unset = auth off (local dev). Interim measure until a real identity
-    # provider is wired in.
+    # Optional API-key gate. When CHAT_API_KEY is set, every route except
+    # /healthz requires the same value in an `X-API-Key` header (or
+    # `?api_key=` for direct-link downloads). Unset means auth is off,
+    # fine for local dev but an interim measure until real identity is
+    # wired in.
     api_key: str | None = None
 
 

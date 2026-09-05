@@ -4,13 +4,13 @@ The api image starts through this module (Dockerfile CMD). If the storage
 volume is empty AND ``STORAGE_SEED_URL`` is set, it downloads the seed
 tarball (raw PDFs + pipeline artifacts) onto the volume once, then hands
 off to uvicorn unchanged. A fresh volume can therefore always rebuild
-itself — no SSH session required.
+itself, no SSH session required.
 
 Local dev never sees this: docker-compose overrides the container command
 with its own uvicorn --reload line, and the env var is unset anyway.
 
-Failure policy: a broken seed must not brick the deploy — the app boots
-with empty storage (login still works; the doc catalog is just empty) and
+Failure policy: a broken seed must not brick the deploy. The app boots
+with empty storage (login still works, the doc catalog is just empty) and
 the [seed] log lines say exactly what happened.
 """
 from __future__ import annotations
@@ -26,13 +26,13 @@ import urllib.request
 def _seed_if_empty() -> None:
     url = os.environ.get("STORAGE_SEED_URL", "").strip()
     root = os.environ.get("STORAGE_ROOT", "storage")
-    # The sentinel is written only AFTER a fully successful extraction — an
-    # interrupted seed (deploy restart mid-download/extract) therefore retries
-    # on the next boot instead of leaving the volume silently half-seeded.
-    # (tarfile overwrites existing paths, so a retry over partial content heals.)
-    # STORAGE_SEED_FORCE=1 ignores the sentinel: a re-stack can refresh an
-    # ALREADY-seeded volume in place (unset it again after the boot, or every
-    # deploy re-downloads the tarball).
+    # The sentinel is written only after a fully successful extraction, so an
+    # interrupted seed (deploy restart mid-download/extract) retries on the
+    # next boot instead of leaving the volume silently half-seeded (tarfile
+    # overwrites existing paths, so a retry over partial content heals).
+    # STORAGE_SEED_FORCE=1 ignores the sentinel so a re-stack can refresh an
+    # already-seeded volume in place. Unset it again after boot, or every
+    # deploy re-downloads the tarball.
     sentinel = os.path.join(root, ".seeded")
     force = os.environ.get("STORAGE_SEED_FORCE", "").strip().lower() in ("1", "true", "yes")
     if not url:
@@ -61,7 +61,7 @@ def _seed_if_empty() -> None:
         req = urllib.request.Request(
             url,
             # ngrok's free tier serves an interstitial page to browser-like
-            # clients unless this header is present; harmless elsewhere.
+            # clients unless this header is present, harmless elsewhere.
             headers={"ngrok-skip-browser-warning": "1", "User-Agent": "seed-boot/1"},
         )
         with tempfile.NamedTemporaryFile(suffix=".tgz", delete=False) as tmp:

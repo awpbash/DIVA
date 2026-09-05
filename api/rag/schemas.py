@@ -1,6 +1,6 @@
 """Shared pydantic models for chat + retrieval.
 
-Keep these flat and JSON-serializable — they cross the SSE boundary and the
+Keep these flat and JSON-serializable, they cross the SSE boundary and the
 React client mirrors them by hand.
 """
 from __future__ import annotations
@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 Intent = Literal[
     "factual",        # "what is the consumption charge rate?"
-    "comparison",     # "compare X and Y" — synth must render a table
+    "comparison",     # "compare X and Y", synth must render a table
     "formula",        # "what's the default-interest formula?"
     "clause",         # "show me clause 9.3"
     "cross_ref",      # "what does 9.3 reference?"
@@ -28,7 +28,7 @@ CitationKind = Literal[
     "reference",
     "block",
     "section_heading",
-    "document_asset",     # a full-page diagram/schematic — page-level pointer
+    "document_asset",     # a full-page diagram/schematic, page-level pointer
 ]
 
 
@@ -49,7 +49,7 @@ class Citation(BaseModel):
     Block or section-heading atoms. evidence_id remains the public citation key
     for backwards-compatible [ev:...] tags.
 
-    ``bbox`` is normalised 0..1 in PDF coordinate space — the frontend
+    ``bbox`` is normalised 0..1 in PDF coordinate space, the frontend
     multiplies by rendered page size to draw the highlight rectangle.
     """
     evidence_id: str
@@ -63,7 +63,7 @@ class Citation(BaseModel):
     section_title: Optional[str] = None
     snippet: str
     bbox: Optional[list[float]] = None       # [x0, y0, x1, y1] normalised (envelope)
-    # Per-page rects [{page_no, bbox}] — one per cited block/table-row.
+    # Per-page rects [{page_no, bbox}], one per cited block/table-row.
     # Preferred over `bbox` by the viewer: a fact cited in two far-apart
     # blocks draws two tight rectangles, not one giant envelope.
     rects: Optional[list[dict]] = None
@@ -78,19 +78,19 @@ class Citation(BaseModel):
     linked_context: Optional[str] = None
     score: float = 0.0
     # Access-policy tags (set at answer time by api/rag/policy.py). `sensitivity`
-    # is the class this evidence belongs to (e.g. 'financial'); `restricted` is
-    # true when the current viewer role may not see it — the UI blurs these.
+    # is the class this evidence belongs to (e.g. 'financial'). `restricted` is
+    # true when the current viewer role may not see it, the UI blurs these.
     sensitivity: Optional[str] = None
     restricted: bool = False
     # Field-level verification consensus (set on knowledge-base OpsField
     # citations): who stands behind this value and how strongly. `verified_by`
-    # holds verifier emails at retrieval time; chat.py swaps in display names
+    # holds verifier emails at retrieval time, chat.py swaps in display names
     # before the payload leaves the server.
     field_trust: Optional[str] = None          # human_validated | disputed | None
     verified_by: Optional[list[str]] = None
     verify_confidence: Optional[float] = None  # winning vote share, 0..1
     verify_votes: Optional[int] = None         # total standing votes
-    # The bare field value (OpsField citations) — lets the citation forwarder
+    # The bare field value (OpsField citations), lets the citation forwarder
     # recognise when a raw-text citation evidences the same value as a
     # verified statement, and swap in the verified record.
     field_value: Optional[str] = None
@@ -103,13 +103,13 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage]
-    doc_ids: Optional[list[str]] = None  # filter retrieval; None = all docs
+    doc_ids: Optional[list[str]] = None  # filter retrieval, None = all docs
     # Retrieval-eval switch: run plan + agent loop, emit the citation bundle,
     # then stop BEFORE synth. Lets the eval harness measure recall / routing
     # without paying for the streamed answer. Default False = normal chat.
     retrieval_only: bool = False
     # ADMIN-ONLY impersonation override ("answer as a default user would see
-    # it" — debugging/evals). The effective role comes from the login session;
+    # it", debugging/evals). The effective role comes from the login session,
     # a non-admin's value here is ignored by the route.
     role: Optional[str] = None
 

@@ -41,7 +41,7 @@ class Config:
     # Model for the per-category normalise pass. PROSE categories use this cheap/
     # fast model (each call is narrow-scoped). Override with OPENAI_NORMALISE_MODEL.
     normalise_model: str
-    # VALUE-BEARING categories (rate/charge/measurement — the ones with a `measure`
+    # VALUE-BEARING categories (rate/charge/measurement, the ones with a `measure`
     # block) instead use this stronger model: they carry multi-value table/schedule
     # rows the cheap model silently under-extracts (drops a column/sibling value).
     # Override with OPENAI_NORMALISE_HEAVY_MODEL.
@@ -52,7 +52,7 @@ class Config:
     # plain HTTP on :8081, well-known dev key) so local dev needs no env
     # vars. Production sets COSMOS_URI + COSMOS_KEY (or managed identity
     # later). ``cosmos_vector_mode``: 'client' = exact in-RAM cosine (dev,
-    # emulator-proof); 'native' = VectorDistance + DiskANN on real Azure.
+    # emulator-proof), 'native' = VectorDistance + DiskANN on real Azure.
     cosmos_uri: str
     cosmos_key: str
     cosmos_db: str
@@ -81,13 +81,12 @@ class Config:
         storage_path = (repo_root / storage).resolve() if not os.path.isabs(storage) else Path(storage)
         storage_path.mkdir(parents=True, exist_ok=True)
         return cls(
-            # NOT required. `Config.load()` runs at import in a dozen
-            # modules, so requiring it here meant an instance with no key
-            # could not even import the app: `docker compose up` produced a
-            # crash-looping container and a browser that could not connect,
-            # with the real reason buried in container logs. The app now boots
-            # without one, says so, and fails with a clear message at the point
-            # a model is actually needed. See `make_async_openai` below.
+            # Not required: `Config.load()` runs at import in a dozen
+            # modules, so requiring it here would mean an instance with no
+            # key can't even import the app, crash-looping with the real
+            # reason buried in container logs. The app boots without one,
+            # says so, and fails with a clear message only when a model is
+            # actually needed. See `make_async_openai` below.
             openai_api_key=_env("OPENAI_API_KEY"),
             openai_base_url=_env("OPENAI_BASE_URL", ""),
             openai_embed_base_url=_env("OPENAI_EMBED_BASE_URL", ""),
@@ -103,7 +102,7 @@ class Config:
             normalise_heavy_model=_env("OPENAI_NORMALISE_HEAVY_MODEL", "gpt-5.4"),
             embed_model=_env("OPENAI_EMBED_MODEL", "text-embedding-3-large"),
             cosmos_uri=_env("COSMOS_URI", "http://localhost:8081"),
-            # The well-known Cosmos emulator key — public by design, dev only.
+            # The well-known Cosmos emulator key, public by design, dev only.
             cosmos_key=_env("COSMOS_KEY",
                             "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2n"
                             "Q9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="),
@@ -114,7 +113,7 @@ class Config:
             cu_endpoint=_env("CU_ENDPOINT", "").rstrip("/"),
             cu_key=_env("CU_KEY", ""),
             # prebuilt-layout = words/paragraphs/tables/figures with geometry
-            # (verified live on GA 2025-11-01; the docs' older sample name
+            # (verified live on GA 2025-11-01, the docs' older sample name
             # prebuilt-documentAnalyzer does not exist in GA).
             cu_analyzer=_env("CU_ANALYZER", "prebuilt-layout"),
             storage_root=storage_path,
@@ -136,26 +135,26 @@ def _require_model_key(cfg: "Config") -> None:
 
 
 # Passed explicitly rather than left to the SDK's own default. The SDK reads
-# OPENAI_BASE_URL from the environment whenever base_url is None, and a .env
-# line left blank ("OPENAI_BASE_URL=") is present-but-empty, not absent. The
-# SDK then builds every request against an empty host and every model call
-# dies with "Request URL is missing an 'http://' or 'https://' protocol",
-# which names nothing the reader can act on. .env.example ships that line
-# commented out, so uncommenting it and filling it in later is a normal thing
-# to do.
+# OPENAI_BASE_URL from the environment whenever base_url is None, and a
+# blank .env line ("OPENAI_BASE_URL=") is present but empty, not absent. The
+# SDK then builds every request against an empty host, and every call dies
+# with an unhelpful "Request URL is missing an 'http://' or 'https://'
+# protocol" error. .env.example ships that line commented out, so
+# uncommenting and filling it in later is a normal thing to do.
 OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
 
 def make_async_openai(cfg: "Config", **kwargs):
     """The single place an AsyncOpenAI client is built. Routes through an
-    OpenAI-compatible base_url (e.g. Azure AI Foundry) when ``OPENAI_BASE_URL``
-    is set; falls back to api.openai.com otherwise. Centralised so a future
-    auth-header / api-version tweak lives in one spot.
+    OpenAI-compatible base_url (e.g. Azure AI Foundry) when
+    ``OPENAI_BASE_URL`` is set, falls back to api.openai.com otherwise.
+    Centralised so a future auth-header or api-version tweak lives in one
+    spot.
 
-    Raises when no key is configured, with the fix in the message. This is the
-    one chokepoint every model call passes through, so an unconfigured instance
-    fails here, once, legibly, rather than at import time or as a bare 401 from
-    the provider."""
+    Raises when no key is configured, with the fix in the message: this is
+    the one chokepoint every model call passes through, so an unconfigured
+    instance fails here, once, legibly, rather than at import time or as a
+    bare 401 from the provider."""
     from openai import AsyncOpenAI
     _require_model_key(cfg)
     return AsyncOpenAI(

@@ -11,7 +11,7 @@ Endpoints (see ``routes/`` for full schemas)::
     GET  /documents               list ingested docs
     GET  /pdf/{doc_id}            stream raw PDF (Content-Type: application/pdf)
     GET  /evidence/{evidence_id}  page_no + bbox/rects + snippet for highlight
-    POST /chat                    SSE stream — multi-turn Q&A with citations
+    POST /chat                    SSE stream, multi-turn Q&A with citations
     GET  /graph/subgraph          per-answer subgraph (cited nodes + 1-hop)
     GET  /graph/overview          full graph for the Explore tab
 
@@ -59,13 +59,13 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 
-# Wire our rag.* loggers into stdout. uvicorn's default config only sets
-# up its own loggers; without this, `logging.getLogger("rag.chat")` calls
-# go nowhere and the agent loop is invisible.
+# Wire our rag.* loggers into stdout. uvicorn's default config only sets up
+# its own loggers, so without this, `logging.getLogger("rag.chat")` calls go
+# nowhere and the agent loop is invisible.
 #
-# LOG_FORMAT=json switches to one-JSON-object-per-line (what Container Apps /
-# Log Analytics parse into queryable columns); the default stays human-
-# readable for local dev.
+# LOG_FORMAT=json switches to one-JSON-object-per-line, the format
+# Container Apps / Log Analytics parse into queryable columns. Default
+# stays human-readable for local dev.
 
 
 class _JsonFormatter(logging.Formatter):
@@ -99,7 +99,7 @@ for _name in ("rag", "rag.chat", "rag.agent", "rag.tools", "api",
     if not _l.handlers:
         _l.addHandler(_log_handler)
     _l.propagate = False
-# The Azure SDK logs every HTTP request at INFO — keep it to warnings.
+# The Azure SDK logs every HTTP request at INFO, keep it to warnings.
 logging.getLogger("azure").setLevel(logging.WARNING)
 
 _access_log = logging.getLogger("api.access")
@@ -127,12 +127,11 @@ def _log_security_posture() -> None:
 
 def _load_demo_corpus() -> None:
     """One-shot: ingest examples/corpus/*.pdf through the real upload path,
-    with the intake declarations from examples/manifest.py (both amendments
-    declare themselves as amending the base agreement — see
-    examples/README.md for why the corpus is shaped this way). Triggered
-    once by the setup wizard's Demo path
-    (api/routes/setup.py:choose_demo_domain) and consumed (cleared) by the
-    lifespan handler below before this runs, so a later restart never
+    with the intake declarations from examples/manifest.py (see
+    examples/README.md for why both amendments declare themselves as
+    amending the base agreement). Triggered once by the setup wizard's
+    Demo path (api/routes/setup.py:choose_demo_domain), and cleared by the
+    lifespan handler below before this runs so a later restart never
     re-ingests it."""
     log = logging.getLogger("api")
     try:
@@ -183,7 +182,7 @@ async def lifespan(app: FastAPI):
     await deps.init()
     # File seam: on Azure, restore the storage/ working cache from Blob
     # before anything reads it (dev: no-op). Runs on a thread so a large
-    # first pull can't starve the event loop; requests meanwhile 503 via
+    # first pull can't starve the event loop. Requests meanwhile 503 via
     # /readyz until the store answers.
     import threading as _threading
 
@@ -193,12 +192,11 @@ async def lifespan(app: FastAPI):
         _threading.Thread(target=filestore.pull,
                           args=(_get_config(),), daemon=True).start()
 
-    # Create the database and container if they are absent. Idempotent, free,
-    # and the difference between `docker compose up -d` working and an instance
-    # that serves a login screen which never becomes ready, because the only
-    # thing that ever created them was a setup command the operator had not run
-    # yet. On a thread: a cold emulator takes up to a minute and the app must
-    # answer /healthz and show a login screen throughout.
+    # Create the database and container if absent. Idempotent and free, and
+    # the difference between `docker compose up -d` working and an instance
+    # stuck showing a login screen that never becomes ready because nobody
+    # ran the setup command. On a thread: a cold emulator takes up to a
+    # minute, and the app must keep answering /healthz throughout.
     def _ensure_store() -> None:
         from pipeline.config import Config
         from pipeline.store.client import CosmosStore
@@ -225,14 +223,15 @@ async def lifespan(app: FastAPI):
     except Exception:  # noqa: BLE001 — a locked app.db must not block boot
         pass
     try:
-        # One-time: pre-vote single-verifier overlays become one approve vote each
-        # (idempotent no-op afterwards). Best-effort — a locked file must not block boot.
+        # One-time: pre-vote single-verifier overlays become one approve vote
+        # each (idempotent no-op afterwards). Best-effort, a locked file must
+        # not block boot.
         review_votes.migrate_legacy_overlays()
     except Exception:  # noqa: BLE001
         logging.getLogger("api").warning("legacy overlay migration failed", exc_info=True)
     try:
-        # Documents registry table = a projection of the intake sidecars;
-        # rebuild it at boot so declarations made before the table existed
+        # Documents registry table is a projection of the intake sidecars.
+        # Rebuild it at boot so declarations made before the table existed
         # (or a lost app.db) show up. Idempotent, ~1ms per document.
         from pipeline.kb import registry as _registry
         _registry.sync_documents_from_sidecars(_get_config())
@@ -242,10 +241,10 @@ async def lifespan(app: FastAPI):
     except Exception:  # noqa: BLE001
         logging.getLogger("api").warning("document registry sync failed", exc_info=True)
     try:
-        # Setup-wizard demo path (see api/routes/setup.py:choose_demo_domain):
-        # cleared BEFORE running so a crash mid-ingest can't loop the seed on
-        # every subsequent restart. Runs on a thread — ingestion makes real
-        # model calls and must not block /healthz from answering.
+        # Setup-wizard demo path (see api/routes/setup.py:choose_demo_domain).
+        # Cleared before running so a crash mid-ingest can't loop the seed on
+        # every restart. Runs on a thread since ingestion makes real model
+        # calls and must not block /healthz from answering.
         if appdb.get_setting("setup_load_demo_corpus") == "1":
             appdb.set_setting("setup_load_demo_corpus", "0")
             _threading.Thread(target=_load_demo_corpus, daemon=True).start()
@@ -269,8 +268,8 @@ app = FastAPI(
 
 
 # --- middleware ------------------------------------------------------------
-# Registration order matters: CORSMiddleware is added LAST so it wraps
-# everything — auth 401s and error 500s still carry CORS headers, instead
+# Registration order matters: CORSMiddleware is added last so it wraps
+# everything, so auth 401s and error 500s still carry CORS headers instead
 # of surfacing in the browser as opaque CORS failures.
 
 
@@ -287,11 +286,11 @@ async def _access_logging(request: Request, call_next):
 
 
 # Paths a request may reach even when setup has not finished. Everything
-# else that matches a KNOWN API prefix below is gated; anything that matches
-# NEITHER list (any static asset / SPA route the catch-all at the bottom of
-# this file serves) is left alone here, so the wizard's own page shell, JS
-# and CSS always load — the React app decides client-side whether to render
-# the wizard or the real app, based on GET /setup/status.
+# else that matches a known API prefix below is gated. Anything matching
+# neither list (static assets, or an SPA route the catch-all below serves)
+# is left alone, so the wizard's page shell, JS and CSS always load. The
+# React app decides client-side whether to render the wizard or the real
+# app, based on GET /setup/status.
 _SETUP_EXEMPT_PREFIXES = ("/setup", "/healthz", "/readyz", "/branding",
                          "/openapi.json", "/docs", "/redoc")
 # Kept as an explicit allow-list (rather than routing introspection) so it's
@@ -304,9 +303,9 @@ _GATED_PREFIXES = ("/documents", "/pdf", "/evidence", "/restricted-regions",
 
 
 def _path_under(path: str, prefixes: tuple[str, ...]) -> bool:
-    """True if `path` IS one of `prefixes` or a sub-path of one — a plain
-    `str.startswith` would also match an unrelated route that merely shares a
-    text prefix (`/adminfoo` "starting with" `/admin`)."""
+    """True if `path` IS one of `prefixes` or a sub-path of one. A plain
+    `str.startswith` would also match an unrelated route that merely shares
+    a text prefix (`/adminfoo` "starting with" `/admin`)."""
     return any(path == p or path.startswith(p + "/") for p in prefixes)
 
 
@@ -317,16 +316,12 @@ async def _setup_gate(request: Request, call_next):
             or _path_under(path, _SETUP_EXEMPT_PREFIXES)
             or not _path_under(path, _GATED_PREFIXES)):
         return await call_next(request)
-    # to_thread: this runs on almost every request (everything under
-    # _GATED_PREFIXES), and unlike a sync route handler or a sync FastAPI
-    # dependency, Starlette middleware gets no automatic threadpool offload
-    # for a plain blocking call. appdb.is_setup_complete() does a synchronous
-    # sqlite read, so calling it directly here ties up the SHARED event loop
-    # for as long as that read takes, on every gated request, which starves
-    # every OTHER pending request (including /healthz, exempt from the gate
-    # itself but not from the loop being busy) until it returns. This is very
-    # likely what an earlier, harder-to-pin-down freeze on this instance
-    # actually was.
+    # to_thread: this runs on almost every request. Unlike a sync route
+    # handler or a sync FastAPI dependency, Starlette middleware gets no
+    # automatic threadpool offload for a blocking call, so a direct
+    # appdb.is_setup_complete() sqlite read here would tie up the shared
+    # event loop and stall every other pending request, including
+    # /healthz, for as long as the read takes.
     if await asyncio.to_thread(appdb.is_setup_complete):
         return await call_next(request)
     return JSONResponse(
@@ -351,7 +346,7 @@ async def _api_key_gate(request: Request, call_next):
 
 @app.exception_handler(Exception)
 async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
-    # Never leak stack traces to clients; full trace goes to the server log.
+    # Never leak stack traces to clients, full trace goes to the server log.
     _error_log.error("unhandled on %s %s: %s\n%s",
                      request.method, request.url.path, exc,
                      traceback.format_exc())
@@ -395,17 +390,18 @@ async def branding() -> JSONResponse:
         domain = ""
     try:
         # Only ever set on an instance nobody has signed into yet. See
-        # appdb.first_run_email: it is how the operator learns the address
-        # their own install created, and it disappears after the first login.
+        # appdb.first_run_email: it's how the operator learns the address
+        # their own install created, and it disappears after first login.
         # to_thread: unauthenticated and public, so this is one of the more
-        # frequently hit routes (every login screen load), and a sync sqlite
-        # call here runs directly on the shared event loop otherwise.
+        # frequently hit routes (every login screen load), and a sync
+        # sqlite call here would otherwise run directly on the shared
+        # event loop.
         hint = await asyncio.to_thread(appdb.first_run_email)
     except Exception:  # noqa: BLE001 — a locked app.db must not blank the page
         hint = None
-    # The upload form's document-type menu. Domain vocabulary, so it is served
-    # rather than written into the frontend, which used to offer one domain's
-    # words to every deployment.
+    # The upload form's document-type menu. Domain vocabulary, so it's
+    # served rather than hardcoded into the frontend, which would offer
+    # one domain's words to every deployment.
     try:
         from pipeline.kb.intake import doc_types
         types = list(doc_types())
@@ -424,7 +420,7 @@ async def branding() -> JSONResponse:
 @app.get("/healthz")
 async def healthz() -> JSONResponse:
     """Liveness only: the process is up and serving. Dependency health lives
-    in /readyz — an orchestrator must not kill the container just because a
+    in /readyz. An orchestrator must not kill the container just because a
     downstream service blinked."""
     return JSONResponse({"ok": True})
 
@@ -480,13 +476,13 @@ app.include_router(feedback.router)
 
 # --- the SPA (single-container mode) ----------------------------------------
 # FastAPI serves the built React bundle directly: one container, one origin,
-# no nginx, no proxy route list to maintain. API routes are registered ABOVE,
-# so they always win; this catch-all only sees non-API paths. In dev (Vite on
-# :5173, no web/dist) the block simply doesn't mount.
+# no nginx, no proxy route list to maintain. API routes are registered
+# above, so they always win, and this catch-all only sees non-API paths.
+# In dev (Vite on :5173, no web/dist) the block simply doesn't mount.
 
 _WEB_DIST = Path(__file__).resolve().parents[1] / "web" / "dist"
 if _WEB_DIST.is_dir():
-    # PDF.js ships an ES-module worker (pdf.worker.min-*.mjs); browsers
+    # PDF.js ships an ES-module worker (pdf.worker.min-*.mjs). Browsers
     # refuse to start a module worker served as octet-stream, which
     # surfaces as "Failed to load PDF." Map .mjs explicitly.
     mimetypes.add_type("application/javascript", ".mjs")
@@ -495,7 +491,8 @@ if _WEB_DIST.is_dir():
     @app.get("/{spa_path:path}", include_in_schema=False)
     async def _spa(spa_path: str) -> FileResponse:
         # A `..` segment is never a legitimate SPA route or asset. Hard 404,
-        # never the app-shell fallback — a traversal probe must not get a 200.
+        # never the app-shell fallback, since a traversal probe must not
+        # get a 200.
         if ".." in spa_path.split("/"):
             raise HTTPException(404, "not found")
         candidate = (_WEB_DIST / spa_path).resolve() if spa_path else _INDEX
@@ -507,12 +504,11 @@ if _WEB_DIST.is_dir():
             return FileResponse(candidate)
         # The app shell: client-side routes (/, /review, /knowledge, ...)
         # fall through to it, and a direct /index.html request is forced
-        # through here too (the is_file() check above excludes it). It names
-        # the CURRENT build's content-hashed asset filenames, so unlike those
-        # assets it must never be cached — a browser holding a stale copy
-        # after a rebuild keeps quietly running old frontend code with no
-        # error, which is exactly what let a prior wizard test look "broken"
-        # when the real cause was cached HTML pointing at a bundle the
-        # server no longer serves. FileResponse sets Last-Modified/ETag on
-        # its own; only Cache-Control needs overriding.
+        # through here too (the is_file() check above excludes it). It
+        # names the CURRENT build's content-hashed asset filenames, so
+        # unlike those assets it must never be cached: a stale cached copy
+        # after a rebuild would keep quietly running old frontend code
+        # against a bundle the server no longer serves, with no visible
+        # error. FileResponse sets Last-Modified/ETag on its own, only
+        # Cache-Control needs overriding.
         return FileResponse(_INDEX, headers={"Cache-Control": "no-store"})

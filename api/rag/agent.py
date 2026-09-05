@@ -3,7 +3,7 @@
 Wraps OpenAI's chat-completion tool-calling. The loop:
 
 1. System prompt seeded with the planner's ``IntentPlan`` (intent + key_terms +
-   categories + rationale) — gives the agent a head-start on which tool to
+   categories + rationale), gives the agent a head-start on which tool to
    reach for first.
 2. Each iteration: model emits 0+ tool calls, we dispatch them in parallel,
    union the citations into a bundle keyed by ``evidence_id``, append the
@@ -13,7 +13,7 @@ Wraps OpenAI's chat-completion tool-calling. The loop:
 4. Yield ``AgentEvent`` objects throughout so the SSE route can stream
    per-step thoughts, tool calls, and incremental citations to the UI.
 
-The loop returns / accumulates the citation bundle; synth runs separately
+The loop returns / accumulates the citation bundle, synth runs separately
 on the final union. Keeping retrieval and answer-generation separate means
 the agent can iterate on retrieval cheaply, then we pay for streaming
 synth once with the full evidence.
@@ -98,7 +98,7 @@ def _format_history(messages: list[ChatMessage]) -> str:
 
 
 def _enabled_tool_schemas() -> list[dict]:
-    """Tool schemas minus anything in CHAT_DISABLED_TOOLS — the kill-switch
+    """Tool schemas minus anything in CHAT_DISABLED_TOOLS, the kill-switch
     for a misbehaving tool (env var + restart, no code change)."""
     disabled = set(get_settings().disabled_tools)
     if not disabled:
@@ -200,12 +200,13 @@ _AUTHORITATIVE_TOOLS = frozenset({
 def _rrf_scores(ranked_lists: list[list[str]], k: int = 60) -> dict[str, float]:
     """Reciprocal Rank Fusion over per-tool-call ranked id-lists.
 
-    Each retriever (vector, BM25, …) returns its own ranking; RRF fuses them
-    by RANK, not score — which is exactly why it sidesteps the incomparable-
-    score problem (cosine vs BM25 vs fixed typed scores). A span ranked high
-    by several retrievers accumulates several 1/(k+rank) terms and rises; a
-    span seen by only one still scores, but lower. ``k`` damps the tail
-    (standard default 60). rank is 1-based so the top hit contributes 1/(k+1).
+    Each retriever (vector, BM25, ...) returns its own ranking. RRF fuses
+    them by rank, not score, which sidesteps the incomparable-score problem
+    (cosine vs BM25 vs fixed typed scores). A span ranked high by several
+    retrievers accumulates several 1/(k+rank) terms and rises, one seen by
+    only one retriever still scores, but lower. ``k`` damps the tail
+    (standard default 60), rank is 1-based so the top hit contributes
+    1/(k+1).
     """
     scores: dict[str, float] = {}
     for lst in ranked_lists:
@@ -230,24 +231,20 @@ async def run(
     doc_tokens: dict[str, list[str]] | None = None,
 ) -> AsyncIterator[AgentEvent | AgentResult]:
     """Run the tool-calling loop. Yields ``AgentEvent`` instances during the
-    loop and one final ``AgentResult`` when it terminates.
+    loop and one final ``AgentResult`` when it terminates. The route layer
+    matches on type: events get re-emitted as SSE, the result feeds synth.
 
-    The route layer matches on type: events get re-emitted as SSE, the
-    result feeds synth.
-
-    ``doc_tokens`` is the confidential-value net (api/rag/policy.py), applied
-    to each tool call's results BEFORE they are appended to the conversation
-    or yielded as a tool_result event. The per-tool source filters already
-    keep most confidential facts out of a result entirely. This is the
-    belt-and-braces catch for the ones that slip past that first check
-    (a mislabelled fact, or a visible citation's row_context smuggling a
-    restricted value past the class check, same as api/rag/policy.py's
-    tag_citations already documents). Applying it here, not just on the
-    final bundle after the loop, matters because a restricted value the
-    model READS can otherwise resurface in its own free-text "thought" on a
-    later step, which streams to the browser as it's generated, well before
-    any post-loop filter would ever run. None skips the check entirely
-    (callers with no role/clearance concept, if any ever exist)."""
+    ``doc_tokens`` is the confidential-value net (api/rag/policy.py),
+    applied to each tool call's results before they reach the conversation
+    or a tool_result event. It's the belt-and-braces catch for a
+    confidential value that slips past the per-tool source filters (a
+    mislabelled fact, or a row_context smuggling a restricted value past
+    the class check). This must happen inside the loop, not just on the
+    final bundle, because a restricted value the model reads can resurface
+    in its own free-text "thought" on a later step, which streams to the
+    browser immediately, before any post-loop filter runs. None skips the
+    check entirely (callers with no role/clearance concept, if any exist).
+    """
     if not messages:
         yield AgentResult(citations=[], steps_used=0, finish_reason="empty_input")
         return
@@ -256,7 +253,7 @@ async def run(
     history = _format_history(messages[:-1])
     plan_brief = _format_plan_brief(plan)
 
-    # Plain replace (not str.format) — the prompt body has literal `{...}`
+    # Plain replace (not str.format): the prompt body has literal `{...}`
     # examples like `{rate_type:"consumption_charge_rate"}` that would
     # otherwise be interpreted as format placeholders.
     system_prompt = (
@@ -327,7 +324,7 @@ async def run(
             break
 
         # Append the assistant message (with tool_calls) to the convo.
-        # The OpenAI API requires the original tool_calls structure here —
+        # The OpenAI API requires the original tool_calls structure here,
         # serialize it back to the dict shape.
         convo.append({
             "role": "assistant",
@@ -366,7 +363,7 @@ async def run(
             )))
 
         # Await all results, then emit tool_result events in declaration
-        # order (matches the order the model picked them — easier for the
+        # order (matches the order the model picked them, easier for the
         # UI than as-completed ordering, which races).
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -414,7 +411,7 @@ async def run(
             added = _merge_citations(bundle, new_citations)
 
             # Record this call's ranking for RRF (full tool order, incl. spans
-            # already in the bundle — cross-retriever agreement is the signal).
+            # already in the bundle, cross-retriever agreement is the signal).
             ranked_ids = [c.evidence_id for c in new_citations if c.evidence_id]
             if ranked_ids:
                 retrieval_lists.append(ranked_ids)
@@ -469,7 +466,7 @@ async def run(
 
 
 def _safe_loads(s: str | None) -> dict:
-    """Tolerant JSON parser — OpenAI tool_call arguments are stringified
+    """Tolerant JSON parser: OpenAI tool_call arguments are stringified
     JSON, occasionally with trailing whitespace or empty payloads."""
     if not s:
         return {}
