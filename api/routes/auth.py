@@ -111,7 +111,15 @@ def login(body: LoginBody) -> dict:
     controlled by the seeded RBAC account list, not by whatever you type."""
     user = appdb.get_user(body.email)
     if not user:
-        raise HTTPException(401, "no account for this email. Ask an admin to add you.")
+        # "Ask an admin" is a dead end for a solo operator who IS the admin and
+        # is simply locked out (wrong email, or the account list came from an
+        # earlier machine). Point at the one recovery path that always exists:
+        # a shell into the container, not a person to ask.
+        raise HTTPException(
+            401, "no account for this email. Ask an admin to add you. If "
+                 "you're the only admin, run "
+                 "`docker compose exec app python -m scripts.accounts list` "
+                 "to see the registered accounts.")
     token = appdb.create_session(user["email"])
     appdb.log_usage(user["email"], "login")   # append-only sign-in history (metrics)
     return {"token": token, "user": _public(user),
