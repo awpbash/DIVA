@@ -26,7 +26,7 @@ Three commands, all free, none of which call a model:
 ```bash
 python -m pytest tests/          # the deterministic suite
 python -m ruff check .           # lint
-cd web && npm run build          # typecheck plus production bundle
+cd web && pnpm run build && pnpm test   # typecheck, bundle, and frontend tests
 ```
 
 CI runs exactly these. A pull request that fails any of them will not be

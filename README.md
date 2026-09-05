@@ -110,7 +110,7 @@ to make before exposing an instance.
 
 ```bash
 python -m uvicorn api.main:app --reload --port 8000
-cd web && npm install && npm run dev      # http://localhost:5173
+cd web && pnpm install && pnpm run dev    # http://localhost:5173
 ```
 
 Same wizard, same questions, just against the dev server instead of the
@@ -324,7 +324,7 @@ The deterministic suite is free and runs in about fifteen seconds:
 ```bash
 python -m pytest tests/       # no model calls, no live database
 python -m ruff check .
-cd web && npm run build
+cd web && pnpm run build && pnpm test
 ```
 
 ## Costs

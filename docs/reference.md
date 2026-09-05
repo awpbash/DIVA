@@ -131,7 +131,8 @@ Run everything as a module: `python -m scripts.setup`, never
 | --- | --- | --- |
 | `python -m pytest tests/ -q` | Free | The deterministic suite. No model calls, no live database |
 | `python -m ruff check .` | Free | Lint, scoped to correctness rules |
-| `cd web && npm run build` | Free | The frontend build |
+| `cd web && pnpm run build` | Free | The frontend build |
+| `cd web && pnpm test` | Free | The frontend test suite |
 | `python -m eval.extraction.score --run NAME` | Free | Grade extraction against your human-verified gold set |
 | `python -m eval.extraction.score --dump` | Free | Per-document field extractions, for seeding a private gold set |
 | `python -m scripts.ask "<question>"` | **Paid** | One question at the live chat endpoint. `--role`, `--doc`, `--retrieval-only` |

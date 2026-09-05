@@ -26,6 +26,8 @@ web/node_modules/
 web/dist/
 web/.vite/
 web/tsconfig.tsbuildinfo
+# pnpm-lock.yaml is the one lockfile this repo uses, not npm's.
+web/package-lock.json
 
 # IDE
 .vscode/
@@ -40,11 +42,6 @@ Thumbs.db
 # Scratch / debug artefacts
 decoded.txt
 temp*.json
-scripts/.deck_cache/
-
-# Neo4j image-bake artifacts (the /data snapshot copied into the image at build)
-.bake/
-docker/neo4j/snapshot/
 
 # Office lock files
 ~$*

@@ -78,7 +78,7 @@ To run without Docker instead, the same wizard runs against the dev server:
 
 ```bash
 python -m uvicorn api.main:app --reload --port 8000
-cd web && npm install && npm run dev      # http://localhost:5173
+cd web && pnpm install && pnpm run dev    # http://localhost:5173
 ```
 
 <a id="04--load-the-sample-contracts"></a>

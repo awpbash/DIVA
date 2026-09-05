@@ -15,10 +15,11 @@
 
 FROM node:20-alpine AS webbuild
 WORKDIR /web
-COPY web/package.json web/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+RUN corepack enable
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY web/ ./
-RUN npm run build
+RUN pnpm run build
 
 
 FROM python:3.12-slim
