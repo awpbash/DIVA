@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/diva-logo.png" width="360" alt="DIVA logo showing a friendly robot holding a document, with the words Document Intelligence with Visual Attribution">
+  <img src="docs/images/diva-logo.png" width="300" alt="DIVA logo showing a friendly robot holding a document, with the words Document Intelligence with Visual Attribution">
 </p>
 
 # DIVA
