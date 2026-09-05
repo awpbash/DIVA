@@ -174,27 +174,11 @@ button:focus-visible {
   font-weight: 600; font-size: 17px;
   letter-spacing: -0.01em;
 }
-/* Flat "document" mark: a bordered square with text lines (the last line short,
-   like a paragraph — three equal bars would read as a hamburger menu). */
-.sidebar__brand-mark {
-  width: 24px; height: 24px;
-  border-radius: 5px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-strong);
-  position: relative;
+/* The DIVA mark (IconBrand in Icon.tsx), coloured like every other sidebar
+   icon rather than the app's own accent, so it reads as UI chrome. */
+.sidebar__brand svg {
   flex: 0 0 auto;
-}
-.sidebar__brand-mark::after {
-  content: "";
-  position: absolute; left: 5px; right: 5px; top: 6px; height: 12px;
-  background-image:
-    linear-gradient(var(--primary), var(--primary)),
-    linear-gradient(var(--primary), var(--primary)),
-    linear-gradient(var(--primary), var(--primary));
-  background-size: 100% 2px, 100% 2px, 55% 2px;
-  background-position: 0 0, 0 5px, 0 10px;
-  background-repeat: no-repeat;
-  opacity: 0.9;
+  color: var(--text-muted);
 }
 
 .sidebar__new {

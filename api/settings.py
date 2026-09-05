@@ -17,7 +17,7 @@ class Settings:
     # Branding. One place, read at runtime and served to the browser by
     # GET /branding, so renaming an instance is an env var and a restart
     # rather than a frontend rebuild.
-    app_name: str = "Verbatim"
+    app_name: str = "DIVA"
     app_tagline: str = "Every answer traced to the clause it came from"
     # What this deployment calls the things it holds, since a hardcoded
     # "contract" is wrong for a corpus of medical records or planning

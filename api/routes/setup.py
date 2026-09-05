@@ -133,7 +133,7 @@ def status() -> dict:
         "admin_email": admins[0]["email"] if len(admins) == 1 else None,
         "bootstrap_email_pending": any(u["email"] == bootstrap_email for u in admins),
         "has_api_key": _has_real_api_key(),
-        "app_name": os.getenv("APP_NAME") or _read_env("APP_NAME") or "Verbatim",
+        "app_name": os.getenv("APP_NAME") or _read_env("APP_NAME") or "DIVA",
     }
 
 

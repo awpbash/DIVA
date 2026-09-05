@@ -61,7 +61,7 @@ export function SetupWizard({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [instanceName, setInstanceName] = useState("Verbatim");
+  const [instanceName, setInstanceName] = useState("DIVA");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminName, setAdminName] = useState("");
   const [apiKey, setApiKey] = useState("");
@@ -103,7 +103,7 @@ export function SetupWizard({ onDone }: { onDone: () => void }) {
   async function submitWelcome() {
     setBusy(true); setError(null);
     try {
-      await setSetupInstance(instanceName.trim() || "Verbatim");
+      await setSetupInstance(instanceName.trim() || "DIVA");
       goto("admin");
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }

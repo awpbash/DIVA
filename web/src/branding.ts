@@ -34,7 +34,7 @@ export interface Branding {
 }
 
 const FALLBACK: Branding = {
-  appName: "Verbatim",
+  appName: "DIVA",
   tagline: "Every answer traced to the clause it came from",
   domain: "",
   version: "",

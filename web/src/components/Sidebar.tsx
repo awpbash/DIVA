@@ -2,7 +2,7 @@ import { Account } from "../api";
 import { useBranding } from "../branding";
 import { DocumentMeta } from "../types";
 import { DocCatalog } from "./DocCatalog";
-import { IconChat, IconGraph, IconPlus, IconTrash } from "./Icon";
+import { IconBrand, IconChat, IconGraph, IconPlus, IconTrash } from "./Icon";
 
 type Tab = "chat" | "explore" | "review" | "knowledge" | "admin" | "ontology";
 
@@ -40,7 +40,7 @@ export function Sidebar(props: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <div className="sidebar__brand-mark" />
+        <IconBrand size={24} />
         <span>{appName}</span>
       </div>
 

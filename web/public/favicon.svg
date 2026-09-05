@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Browser-tab reduction of the DIVA mark (see IconBrand in
+       src/components/Icon.tsx and docs/images/logo.png). Filled rather than
+       stroked: outlines that thin disappear at 16px, a solid shape does not. -->
+  <rect x="4" y="6" width="24" height="22" rx="8" fill="#76a3ff" />
+  <rect x="15" y="4" width="2" height="4" fill="#76a3ff" />
+  <circle cx="16" cy="3" r="1.8" fill="#76a3ff" />
+  <circle cx="12" cy="17" r="2.6" fill="#15161a" />
+  <circle cx="20" cy="17" r="2.6" fill="#15161a" />
+</svg>

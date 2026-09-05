@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiUrl } from "../api";
 import { useAuth } from "../auth";
 import { useBranding } from "../branding";
+import { IconBrand } from "./Icon";
 import "./LoginScreen.css";
 
 // Passwordless login. Type an email that has an account and the access level
@@ -55,7 +56,7 @@ export function LoginScreen() {
     <div className="login">
       <div className="login__card">
         <div className="login__brand">
-          <div className="login__mark" />
+          <IconBrand size={18} />
           <span>{appName}</span>
         </div>
         <h1>Sign in</h1>
