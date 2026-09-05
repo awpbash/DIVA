@@ -35,6 +35,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+from pipeline import sqlite_util
 from pipeline.config import Config
 
 def _quorum(name: str, default: int) -> int:
@@ -85,10 +86,10 @@ def _conn(cfg: Config | None = None) -> sqlite3.Connection:
     # Same reasoning as api/appdb.py's _conn(): WAL + a real busy_timeout so
     # concurrent verifiers voting don't stack up SQLITE_BUSY waits on whichever
     # thread happens to be running the call (the event loop, for async routes).
-    c = sqlite3.connect(_db_path(cfg), timeout=30.0)
+    # sqlite_util.connect also retries the WAL setup itself against a
+    # transient external lock (a cloud-sync client touching the file).
+    c = sqlite_util.connect(_db_path(cfg), timeout=30.0)
     c.row_factory = sqlite3.Row
-    c.execute("PRAGMA journal_mode = WAL")
-    c.execute("PRAGMA busy_timeout = 30000")
     c.executescript(_DDL)
     # Databases created before correction evidence / value snapshots existed
     # lack the columns.

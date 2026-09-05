@@ -20,9 +20,10 @@ from __future__ import annotations
 import os
 import secrets
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from pipeline import sqlite_util
 from pipeline.config import Config
 
 _ROLES = {"admin", "confidential", "default"}
@@ -43,11 +44,12 @@ def _conn() -> sqlite3.Connection:
     # lets readers and a writer run at once instead of taking a whole-file
     # lock, so contention should rarely reach the timeout at all. The longer
     # timeout is just the backstop for whatever WAL doesn't cover.
-    c = sqlite3.connect(_db_path(), timeout=30.0)
+    # sqlite_util.connect additionally retries the WAL setup itself against a
+    # transient external lock (a cloud-sync client touching the file), which
+    # a plain sqlite3.connect() would surface as a hard, uncaught error.
+    c = sqlite_util.connect(_db_path(), timeout=30.0)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA foreign_keys = ON")
-    c.execute("PRAGMA journal_mode = WAL")
-    c.execute("PRAGMA busy_timeout = 30000")
     return c
 
 
@@ -379,6 +381,16 @@ def update_account(email: str, *, name: str | None = None, title: str | None = N
 # --------------------------------------------------------------------------- #
 # Sessions (passwordless — a login mints a random opaque token)
 # --------------------------------------------------------------------------- #
+# A token used to be valid forever once minted: with no password step, a
+# copied or leaked token was permanent, unrevocable account access. 30 days
+# is generous for a real user (nobody keeps a browser tab open a month
+# straight) and bounds how long a leaked one stays useful. Checked lazily off
+# the session's own created_at, which already existed, rather than a
+# background sweep: a stray expired row costs nothing until someone tries to
+# use it, matching how nothing else in this file runs on a timer either.
+_SESSION_MAX_AGE = timedelta(days=30)
+
+
 def create_session(email: str) -> str:
     token = secrets.token_urlsafe(24)
     with _conn() as c:
@@ -392,14 +404,34 @@ def session_user(token: str | None) -> dict | None:
         return None
     with _conn() as c:
         row = c.execute(
-            "SELECT u.* FROM sessions s JOIN users u ON u.email = s.email WHERE s.token = ?",
+            "SELECT u.*, s.created_at AS _session_created_at FROM sessions s "
+            "JOIN users u ON u.email = s.email WHERE s.token = ?",
             (token,)).fetchone()
-    return dict(row) if row else None
+    if not row:
+        return None
+    try:
+        created = datetime.fromisoformat(row["_session_created_at"])
+        age = datetime.now(timezone.utc) - created
+    except (TypeError, ValueError):
+        age = timedelta(0)  # a malformed timestamp must not lock someone out
+    if age > _SESSION_MAX_AGE:
+        delete_session(token)
+        return None
+    return {k: v for k, v in dict(row).items() if k != "_session_created_at"}
 
 
 def delete_session(token: str) -> None:
     with _conn() as c:
         c.execute("DELETE FROM sessions WHERE token = ?", (token,))
+
+
+def delete_sessions_for(email: str) -> int:
+    """Sign one account out everywhere: drop every standing session token for
+    it without touching the account itself. Returns how many were cleared."""
+    with _conn() as c:
+        cur = c.execute("DELETE FROM sessions WHERE email = ?",
+                        (email.strip().lower(),))
+        return cur.rowcount
 
 
 # --------------------------------------------------------------------------- #

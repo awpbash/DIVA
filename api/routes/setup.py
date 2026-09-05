@@ -5,7 +5,7 @@ accounts yet apart from the bootstrap admin nobody has signed into — so
 these routes carry no `Depends(require_admin)`. Instead, every mutating
 route (all but `GET /setup/status`) refuses once `appdb.is_setup_complete()`
 is true: the wizard is a one-time front door, not a permanent unauthenticated
-admin surface. See docs/setup-wizard-plan.md for the full design.
+admin surface.
 
 Config that needs a process restart to take effect (the model key, the
 instance name, the active domain) is written to `.env` / `configs/pipeline.yaml`
@@ -22,6 +22,7 @@ safe and avoids a second implementation of field editing.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
 
@@ -84,7 +85,7 @@ def _has_real_api_key() -> bool:
 def _write_domain(domain: str) -> None:
     """`configs/pipeline.yaml`'s `domain:` key — preferred over an env var
     because it isn't a secret and belongs to the repo's config tree, not the
-    per-deployment .env (see docs/setup-wizard-plan.md section 3.6)."""
+    per-deployment .env."""
     import yaml
     doc: dict = {}
     if _PIPELINE_YAML.exists():
@@ -158,9 +159,10 @@ class AdminBody(BaseModel):
 @router.post("/admin")
 def set_admin(body: AdminBody) -> dict:
     """Create (or rename into) the wizard's chosen admin account. This is the
-    one and only admin the wizard creates — see docs/setup-wizard-plan.md
-    section 3.3 for why it must retire the `admin@localhost` bootstrap row
-    rather than add a second admin alongside it. Takes effect immediately
+    one and only admin the wizard creates: it must retire the bootstrap row
+    rather than add a second admin alongside it, because sign-in here is
+    passwordless, so a still-live default admin account is a standing,
+    documented backdoor, not a cosmetic loose end. Takes effect immediately
     (it's an app-database write, not env config), no restart needed."""
     _guard_not_complete()
     email = body.email.strip().lower()
@@ -288,10 +290,10 @@ def activate_domain() -> dict:
 # tested /ontology/* handlers (api/routes/ontology.py) — same validation, same
 # storage, same drift gate, just called as plain functions with a stand-in
 # admin dict instead of through a session (see _wizard_admin above). This is
-# what lets the wizard's field-editing screen (P2.2) be "a styled wrapper
-# around the real endpoints" per docs/setup-wizard-plan.md section 3.2/P2.1,
-# rather than a second implementation of field editing. Every route still
-# 403s once setup is complete, same as the rest of this file.
+# what lets the wizard's field-editing screen be a styled wrapper around the
+# real endpoints, rather than a second implementation of field editing.
+# Every route still 403s once setup is complete, same as the rest of this
+# file.
 # --------------------------------------------------------------------------- #
 @router.get("/ontology")
 def wizard_get_ontology() -> dict:
@@ -340,7 +342,11 @@ async def draft_schema(body: SchemaDraftBody) -> dict:
     """One real model call — costs a small amount of money, same posture as
     /setup/api-key's test call. Never saves anything: the result is edited
     (or discarded) entirely in the browser."""
-    _guard_not_complete()
+    # to_thread: this is the one async def in this file, everything else here
+    # is a plain def FastAPI already runs off the event loop on its own. A
+    # sync sqlite call made directly from an async def does not get that
+    # same automatic offload.
+    await asyncio.to_thread(_guard_not_complete)
     if not body.description.strip():
         raise HTTPException(400, "describe what these documents are first")
     from pipeline.schema_gen import draft_fields
@@ -442,11 +448,11 @@ def build_from_scratch(body: FromScratchBody) -> dict:
     """Generate, validate, and activate a brand-new domain. Validation
     failures are reported once, plainly, rather than blindly retried:
     unlike a freely-generated file, every structural piece here is a fixed
-    template (docs/setup-wizard-plan.md decision #12), so the only failure
-    mode is a bad input (a duplicate key, a party role naming a field that
-    doesn't exist) — retrying the identical template against the identical
-    input would fail identically every time. Decision #13's retry budget
-    was written for genuinely non-deterministic generation; this isn't."""
+    template, so the only failure mode is a bad input (a duplicate key, a
+    party role naming a field that doesn't exist). Retrying the identical
+    template against the identical input would fail identically every time,
+    so there's no retry budget here the way there would be for genuinely
+    non-deterministic generation."""
     _guard_not_complete()
     from pipeline import schema_gen as sg
 
@@ -493,9 +499,9 @@ def finish() -> dict:
         raise HTTPException(400, "no admin account created yet")
     bootstrap_email = appdb.default_bootstrap_email()
     if any(u["email"] == bootstrap_email for u in admins):
-        # Hard finish-line check (docs/setup-wizard-plan.md section 3.3):
-        # sign-in is passwordless, so a still-live admin@localhost is a
-        # documented, public backdoor, not a cosmetic loose end.
+        # Hard finish-line check: sign-in is passwordless, so a still-live
+        # default admin account is a documented, public backdoor, not a
+        # cosmetic loose end.
         raise HTTPException(
             400, f"the default {bootstrap_email!r} account is still active — "
                  f"finish the admin step first")

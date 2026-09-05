@@ -32,6 +32,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .. import sqlite_util
 from ..config import Config
 
 _KINDS = ("field", "delete", "sens_cat", "sens_field")
@@ -58,10 +59,10 @@ def _conn(cfg: Config | None = None) -> sqlite3.Connection:
     # api/review_votes.py, all writing the same app.db under concurrent
     # requests. See api/appdb.py's _conn() for why that matters on an async
     # route (a bare SQLITE_BUSY wait there blocks the whole event loop).
-    c = sqlite3.connect(_db_path(cfg), timeout=30.0)
+    # sqlite_util.connect also retries the WAL setup itself against a
+    # transient external lock (a cloud-sync client touching the file).
+    c = sqlite_util.connect(_db_path(cfg), timeout=30.0)
     c.row_factory = sqlite3.Row
-    c.execute("PRAGMA journal_mode = WAL")
-    c.execute("PRAGMA busy_timeout = 30000")
     c.execute(_DDL)
     return c
 

@@ -170,6 +170,11 @@ async def lifespan(app: FastAPI):
     # api/diagnostics.py for the detection method.
     from . import diagnostics
     diagnostics.start(asyncio.get_running_loop())
+    # A fresh process has made zero calls so far. Also keeps this in-memory
+    # state from leaking between tests that each spin up their own
+    # TestClient(app) in the same pytest process.
+    from . import ratelimit
+    ratelimit.reset()
     # The app database first, and before anything that talks to a network. It
     # is a local sqlite file holding the accounts, so a fresh instance must end
     # up with its first admin even when every remote dependency is down. An
@@ -312,7 +317,17 @@ async def _setup_gate(request: Request, call_next):
             or _path_under(path, _SETUP_EXEMPT_PREFIXES)
             or not _path_under(path, _GATED_PREFIXES)):
         return await call_next(request)
-    if appdb.is_setup_complete():
+    # to_thread: this runs on almost every request (everything under
+    # _GATED_PREFIXES), and unlike a sync route handler or a sync FastAPI
+    # dependency, Starlette middleware gets no automatic threadpool offload
+    # for a plain blocking call. appdb.is_setup_complete() does a synchronous
+    # sqlite read, so calling it directly here ties up the SHARED event loop
+    # for as long as that read takes, on every gated request, which starves
+    # every OTHER pending request (including /healthz, exempt from the gate
+    # itself but not from the loop being busy) until it returns. This is very
+    # likely what an earlier, harder-to-pin-down freeze on this instance
+    # actually was.
+    if await asyncio.to_thread(appdb.is_setup_complete):
         return await call_next(request)
     return JSONResponse(
         {"detail": "This instance is not set up yet. Open it in a browser "
@@ -382,7 +397,10 @@ async def branding() -> JSONResponse:
         # Only ever set on an instance nobody has signed into yet. See
         # appdb.first_run_email: it is how the operator learns the address
         # their own install created, and it disappears after the first login.
-        hint = appdb.first_run_email()
+        # to_thread: unauthenticated and public, so this is one of the more
+        # frequently hit routes (every login screen load), and a sync sqlite
+        # call here runs directly on the shared event loop otherwise.
+        hint = await asyncio.to_thread(appdb.first_run_email)
     except Exception:  # noqa: BLE001 — a locked app.db must not blank the page
         hint = None
     # The upload form's document-type menu. Domain vocabulary, so it is served
