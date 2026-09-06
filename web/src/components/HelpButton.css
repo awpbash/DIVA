@@ -46,6 +46,7 @@
 .helpm {
   width: min(880px, 96vw);
   height: min(720px, 92vh);
+  height: min(720px, 92dvh);
   background: var(--bg-card);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg, 10px);

@@ -205,7 +205,7 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
           · {scopeName} · {payload.nodes.length} nodes / {payload.edges.length} edges
         </div>
         {loading && <div className="pane__loading">loading…</div>}
-        <div style={{ flex: 1 }} />
+        <div className="pane__header-spacer" />
         <div className="graph-mode" role="tablist" aria-label="Graph view">
           <button
             type="button"

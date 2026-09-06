@@ -129,8 +129,14 @@ button.ov__cat:hover, .ov__cat-btn:hover { background: var(--bg-card); }
    works here, just inside a wider-than-the-screen scrollable table — fine
    for a quick edit, a full schema pass is still a desktop job. */
 @media (max-width: 760px) {
-  .ov__bar { padding: 10px 12px; }
-  .ov__search { width: 100%; margin-left: 0; }
+  /* .ov__bar never wrapped before (fine on desktop: title, count, search,
+     one button, all on one line fits easily) — giving the search box
+     width:100% without letting the row wrap doesn't make it full-width, it
+     makes the row overflow, since the title and button still claim their
+     own space too. */
+  .ov__bar { padding: 10px 12px; flex-wrap: wrap; row-gap: 8px; }
+  .ov__search { width: 100%; margin-left: 0; order: 1; }
+  .ov__add { order: 2; }
   .ov__body { flex-direction: column; }
   .ov__rail {
     width: auto; flex-direction: row; overflow-x: auto; overflow-y: hidden;
@@ -140,4 +146,7 @@ button.ov__cat:hover, .ov__cat-btn:hover { background: var(--bg-card); }
   .ov__cat, .ov__cat-btn { flex: 0 0 auto; }
   .ov__main { padding: 10px 12px; }
   .ov__table { min-width: 640px; }
+  /* Edit/delete are icon-sized text glyphs sized for a mouse pointer. */
+  .ov__actions button { padding: 8px 10px; min-height: 44px; min-width: 40px; }
+  .ov__cat-btn, button.ov__cat { min-height: 44px; }
 }

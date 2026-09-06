@@ -160,7 +160,7 @@
   padding: 32px; cursor: zoom-out;
 }
 .adm__fb-lightbox img {
-  max-width: min(1200px, 92vw); max-height: 88vh;
+  max-width: min(1200px, 92vw); max-height: 88vh; max-height: 88dvh;
   width: auto; height: auto; display: block;
   border: 1px solid var(--border-strong); border-radius: var(--radius, 8px);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
@@ -248,13 +248,14 @@
   background: var(--bg-overlay);
   display: flex; align-items: flex-start; justify-content: center;
   padding: 9vh 16px 16px;
+  padding: 9dvh 16px 16px;
   animation: fadeIn var(--t-base) var(--ease-out);
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .modal__box {
   background: var(--bg-card); border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
-  width: min(540px, 94vw); max-height: 82vh;
+  width: min(540px, 94vw); max-height: 82vh; max-height: 82dvh;
   display: flex; flex-direction: column;
   animation: modalIn var(--t-base) var(--ease-out);
 }
@@ -353,4 +354,30 @@
 .adm__danger-actions button:first-child {
   background: transparent; border: 1px solid var(--border); color: var(--text-muted);
   border-radius: 7px; padding: 8px 14px; font-size: 12.5px; cursor: pointer;
+}
+
+/* Phone width. Admin was never touched in the first mobile pass — this was
+   a real gap, not a regression. Nothing here was designed to be reachable
+   below ~900px: a 5-up stat row, a tab strip that doesn't wrap, and tables
+   up to 7 columns wide, all inside a shell that clips (never scrolls) past
+   its own edges, so anything too wide wasn't just ugly, it was unreachable. */
+@media (max-width: 760px) {
+  .adm { padding: 14px 14px 12px; }
+  .adm__head { flex-wrap: wrap; row-gap: 8px; }
+  .adm__stats { grid-template-columns: 1fr 1fr; }
+  /* A strip of section tabs (Documents / Accounts / Activity / …) reads
+     better as a horizontal scroll than a wrap — wrapping turns "which tab
+     am I on" into a two-line guessing game. */
+  .adm__tabs { overflow-x: auto; flex-wrap: nowrap; }
+  .adm__tabs button { flex: 0 0 auto; white-space: nowrap; }
+  /* Tables up to 7 columns wide don't get readable by shrinking — they get
+     unreadable. Let them scroll sideways inside their own box, same as the
+     Ontology field table, instead of either crushing every column or
+     silently overflowing a shell that has no page-level scroll to catch it. */
+  .adm__scroll { overflow-x: auto; }
+  .adm__table { min-width: 560px; }
+  .modal__grid2 { grid-template-columns: 1fr; }
+  /* Section tabs and header actions sized for a mouse pointer. */
+  .adm__tabs button { padding: 11px 14px; min-height: 44px; }
+  .adm__actions button { min-height: 44px; padding: 9px 14px; }
 }

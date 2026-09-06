@@ -396,8 +396,21 @@
    always reachable without hunting. This is a browsing-friendly reflow, not
    a redesign — real verification work is still meant for a desktop screen. */
 @media (max-width: 760px) {
-  .review__body { grid-template-columns: 1fr; grid-template-rows: 42vh 1fr; }
+  .review__body { grid-template-columns: 1fr; grid-template-rows: 42vh 1fr; grid-template-rows: 42dvh 1fr; }
   .review__page { border-right: none; border-bottom: 1px solid var(--border); }
   .review__bar { padding: 10px 12px; }
   .review__doc { max-width: none; flex: 1 1 100%; }
+  /* Prev/next + page jump + the find-text box never had to share a line
+     with anything narrower than a desktop window before — they don't wrap,
+     so on a phone the search box (a fixed 150px) just runs off the edge of
+     a shell that clips instead of scrolling, making it unreachable, not
+     just tight. */
+  .review__pager { flex-wrap: wrap; row-gap: 6px; }
+  .review__search { margin-left: 0; }
+  .review__search-input { width: min(150px, 42vw); }
+  /* Approve / Reject / Propose correction: three buttons, one of them a
+     multi-word label, in a row that assumed desktop width. */
+  .review__actions { flex-wrap: wrap; }
+  .review__actions button { min-height: 44px; padding: 8px 14px; }
+  .review__pager button { min-height: 44px; min-width: 44px; padding: 8px 12px; }
 }
