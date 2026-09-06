@@ -27,13 +27,10 @@ from pathlib import Path
 async def main() -> None:
     from api import appdb, deps
     from api.routes.admin import ingest_local_pdf
-    from api.settings import get_config
     from examples.real_world.manifest import CORPUS, CORPUS_DIR
-    from pipeline.storage import fields_dir
 
     appdb.init()
     await deps.init()
-    cfg = get_config()
 
     corpus_root = Path(__file__).resolve().parents[1] / "examples" / "real_world" / CORPUS_DIR
     paths = {item["file"]: corpus_root / item["file"] for item in CORPUS}
@@ -61,7 +58,14 @@ async def main() -> None:
     pending = set(doc_ids.values())
     deadline = time.monotonic() + 20 * 60
     while pending and time.monotonic() < deadline:
-        done = {d for d in pending if (fields_dir(cfg) / f"{d}.json").exists()}
+        # appdb.job_rows(), not a fields_dir(...).exists() check: the fields
+        # JSON lands partway through the pipeline (canonical_lite), well
+        # before load/docmeta/embed finish and the job is actually marked
+        # done. Watching the file used to declare victory early and exit,
+        # killing those later stages mid-flight on every document that
+        # hadn't quite caught up, 10 of 19 orphaned this way in one real run.
+        status = {j["doc_id"]: j["status"] for j in appdb.job_rows()}
+        done = {d for d in pending if status.get(d) == "done"}
         pending -= done
         for d in done:
             print(f"  done: {d}")
