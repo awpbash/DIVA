@@ -61,3 +61,7 @@ test-results/
 
 # zip files
 *.zip
+
+# Legal research scratch (Penal Code repeal-history demo domain) — real
+# statute/case text gathered for local research only, never committed.
+/legal/

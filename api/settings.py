@@ -36,23 +36,23 @@ class Settings:
     # raise if noise creeps back in.
     min_relevance_score: float = 0.55
 
-    # Synth uses full gpt-5.4: mini has been observed collapsing an
+    # Synth uses full gpt-5.6-terra: luna has been observed collapsing an
     # aggregation caveat into a false zero and dropping the real citation
     # on a money-terms question, and a wrong number here is the worst
     # possible answer. Full does not make this mistake.
-    synth_model_override: str | None = "gpt-5.4"
-    # Planner: mini is fine here. The prompt rule requiring an explicit
+    synth_model_override: str | None = "gpt-5.6-terra"
+    # Planner: luna is fine here. The prompt rule requiring an explicit
     # request for a definition keeps capitalised role terms like
-    # "supplier" from being misread as intent=definition, so mini is not
+    # "supplier" from being misread as intent=definition, so luna is not
     # costing accuracy.
-    planner_model_override: str | None = "gpt-5.4-mini"
+    planner_model_override: str | None = "gpt-5.6-luna"
     max_synth_tokens: int = 4000
 
-    # Agent loop: mini is fine here too. It occasionally retries a typed
+    # Agent loop: luna is fine here too. It occasionally retries a typed
     # lookup with reworded queries before giving up, a few extra cheap
     # round trips, but lands on the same correct answer as full.
     agent_max_steps: int = 5                  # tool-call rounds before forced stop
-    agent_model_override: str | None = "gpt-5.4-mini"
+    agent_model_override: str | None = "gpt-5.6-luna"
 
     # Kill-switch for agent tools. Names listed here (comma-separated in
     # the CHAT_DISABLED_TOOLS env var) are stripped from both the schemas
