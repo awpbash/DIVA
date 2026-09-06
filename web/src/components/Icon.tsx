@@ -46,6 +46,8 @@ export const IconTrash      = ({ size }: Props) => wrap(<><polyline points="3 6 
 export const IconCheck      = ({ size }: Props) => wrap(<polyline points="20 6 9 17 4 12" />, size);
 export const IconEye        = ({ size }: Props) => wrap(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></>, size);
 export const IconLayers     = ({ size }: Props) => wrap(<><polygon points="12 2 22 8.5 12 15 2 8.5 12 2" /><polyline points="2 15.5 12 22 22 15.5" /></>, size);
+export const IconGrid       = ({ size }: Props) => wrap(<><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></>, size);
+export const IconMenu       = ({ size }: Props) => wrap(<><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></>, size);
 
 /** The DIVA mark: a small robot head, a reduction of the full logo (see
  * docs/images/logo.png) down to what still reads at sidebar/favicon size. */

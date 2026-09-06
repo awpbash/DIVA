@@ -391,27 +391,69 @@
 }
 .review__kbdhint b { color: var(--text-muted); font-weight: 600; }
 
-/* Phone width — the contract page and its checklist stack instead of sitting
-   side by side (the two-column layout needs 700px+ just for its minimums).
-   The page keeps a bounded, scrollable height so the checklist below it is
-   always reachable without hunting. This is a browsing-friendly reflow, not
-   a redesign — real verification work is still meant for a desktop screen. */
+.review__mobile-pane { display: none; }
+
 @media (max-width: 760px) {
-  .review__body { grid-template-columns: 1fr; grid-template-rows: 42vh 1fr; grid-template-rows: 42dvh 1fr; }
-  .review__page { border-right: none; border-bottom: 1px solid var(--border); }
-  .review__bar { padding: 10px 12px; }
-  .review__doc { max-width: none; flex: 1 1 100%; }
-  /* Prev/next + page jump + the find-text box never had to share a line
-     with anything narrower than a desktop window before — they don't wrap,
-     so on a phone the search box (a fixed 150px) just runs off the edge of
-     a shell that clips instead of scrolling, making it unreachable, not
-     just tight. */
-  .review__pager { flex-wrap: wrap; row-gap: 6px; }
-  .review__search { margin-left: 0; }
-  .review__search-input { width: min(150px, 42vw); }
-  /* Approve / Reject / Propose correction: three buttons, one of them a
-     multi-word label, in a row that assumed desktop width. */
+  .review__bar {
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .review__modes { width: max-content; max-width: 100%; }
+  .review__modes button { min-height: 36px; padding: 6px 10px; }
+  .review__doc { order: 2; width: 100%; max-width: none; min-height: 42px; flex-basis: 100%; }
+  .review__addev, .review__queue-start { min-height: 38px; }
+  .review__counts {
+    order: 3;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .review__count, .review__progress { flex: 0 0 auto; }
+  .review__queue { order: 3; }
+  .review__queue-keys, .review__kbdhint { display: none; }
+  .review__mobile-pane {
+    order: 4;
+    display: inline-flex;
+    width: 100%;
+    padding: 3px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--bg-app);
+  }
+  .review__mobile-pane button {
+    min-height: 34px;
+    flex: 1 1 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .review__mobile-pane button.is-active { background: var(--primary-soft); color: var(--primary); }
+  .review__body { display: block; min-height: 0; }
+  .review__page, .review__fields { height: 100%; border: 0; }
+  .review__page { background: var(--bg-sidebar); }
+  .review__canvas { padding: 12px; }
+  .review__fields { padding: 8px 8px calc(20px + env(safe-area-inset-bottom)); }
+  .review--mobile-fields .review__page { display: none; }
+  .review--mobile-page .review__fields { display: none; }
+  .review__pager {
+    min-height: 48px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 7px 10px;
+  }
+  .review__pager > button { min-width: 42px; min-height: 34px; }
+  .review__search { width: 100%; margin: 0; order: 3; }
+  .review__search-input { width: 100%; min-height: 34px; }
+  .review__field { min-height: 62px; padding: 10px 12px; }
   .review__actions { flex-wrap: wrap; }
-  .review__actions button { min-height: 44px; padding: 8px 14px; }
-  .review__pager button { min-height: 44px; min-width: 44px; padding: 8px 12px; }
+  .review__actions button { min-height: 36px; }
+  .review__ev { align-items: flex-start; min-height: 36px; padding: 7px 8px; }
+  .review__ev-snip { white-space: normal; line-height: 1.4; }
+  .review__attach-row > * { min-width: 100%; }
+  .review__attach-go { min-height: 40px; }
 }
