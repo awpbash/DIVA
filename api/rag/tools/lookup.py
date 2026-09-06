@@ -15,6 +15,7 @@ from ._shared import (
     _EVIDENCE_COLS,
     _SECTION_COLS,
     _block_row,
+    _block_visible,
     _cols,
     _enrich_evidence,
     _row_to_citation,
