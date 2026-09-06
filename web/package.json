@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "cytoscape": "^3.34.2",
     "elkjs": "^0.9.3",
     "pdfjs-dist": "4.8.69",
     "react": "^18.3.1",
