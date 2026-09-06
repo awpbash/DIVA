@@ -91,11 +91,11 @@ class Config:
             openai_base_url=_env("OPENAI_BASE_URL", ""),
             openai_embed_base_url=_env("OPENAI_EMBED_BASE_URL", ""),
             openai_embed_api_key=_env("OPENAI_EMBED_API_KEY", ""),
-            vision_model=_env("OPENAI_VISION_MODEL", "gpt-5.4-mini"),
-            text_model=_env("OPENAI_TEXT_MODEL", "gpt-5.4-mini"),
-            reasoning_model=_env("OPENAI_REASONING_MODEL", "gpt-5.4"),
+            vision_model=_env("OPENAI_VISION_MODEL", "gpt-5.6-luna"),
+            text_model=_env("OPENAI_TEXT_MODEL", "gpt-5.6-luna"),
+            reasoning_model=_env("OPENAI_REASONING_MODEL", "gpt-5.6-terra"),
             normalise_model=_env("OPENAI_NORMALISE_MODEL",
-                                 _env("OPENAI_TEXT_MODEL", "gpt-5.4-mini")),
+                                 _env("OPENAI_TEXT_MODEL", "gpt-5.6-luna")),
             # Independent of reasoning_model on purpose: a deployment may run
             # reasoning on a cheap model, but the value-category normalise needs
             # a genuinely strong model to split multi-value table rows.
