@@ -1312,11 +1312,6 @@ button:focus-visible {
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
-/* Explore tab only: shift the minimap clear of the fixed help/feedback pills
-   pinned to the viewport's bottom-right corner. */
-.rfgraph--explore .react-flow__minimap {
-  margin-right: 108px;
-}
 .react-flow__minimap-mask {
   fill: rgba(0, 0, 0, 0.6);
 }
@@ -1491,105 +1486,62 @@ button:focus-visible {
 }
 
 /* =====================================================================
-   Explore graph — node-link diagram (ExploreCanvas)
+   Explore graph — node-link diagram (ExploreCanvas, Cytoscape.js)
    ---------------------------------------------------------------------
-   Distinct from the .rfnode evidence-tree cards (inline subgraph). Each
-   node is a compact glyph pill whose colour family encodes its group;
-   the legend doubles as a per-group show/hide filter.
+   Distinct from the .rfnode evidence-tree cards (inline subgraph, still
+   react-flow). Node and edge colour/shape live entirely in the JS
+   stylesheet passed to cytoscape() — a canvas renderer, not DOM, so there
+   are no per-node CSS classes to style here. This block is just the HTML
+   chrome around the canvas: the container and the zoom/fit control bar.
    ===================================================================== */
 
-.gnode {
+.cygraph { position: relative; }
+.cygraph__stage {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+.cygraph__stage:active { cursor: grabbing; }
+/* Unlike GraphCanvas's empty state (which replaces its whole tree), the
+   cytoscape stage stays mounted even with zero elements, so its own empty
+   message overlays on top rather than filling a parent no longer there. */
+.cygraph .rfgraph__empty { position: absolute; inset: 0; pointer-events: none; }
+
+.cygraph__controls {
+  position: absolute;
+  left: var(--s-3);
+  bottom: var(--s-3);
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 188px;
-  padding: 7px 11px;
+  gap: 1px;
   background: var(--bg-card);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  transition:
-    border-color var(--t-snap) var(--ease-snap),
-    transform var(--t-snap) var(--ease-spring),
-    box-shadow var(--t-snap) var(--ease-snap);
-}
-.gnode:hover {
-  border-color: var(--accent);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-}
-.gnode:active { transform: scale(0.985); }
-.gnode--selected {
-  border-color: var(--accent-strong);
-  box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow);
-}
-/* Search: matches ring in amber (distinct from the selection ring above),
-   everything else fades back so a hit reads at a glance in a big graph. */
-.gnode--match {
-  border-color: var(--warn);
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35), var(--shadow);
-}
-.gnode--dim { opacity: 0.35; }
-.gnode__dot {
-  flex: 0 0 auto;
-  width: 9px; height: 9px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
-}
-.gnode__body { min-width: 0; flex: 1 1 auto; }
-.gnode__label {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-}
-.gnode__title {
-  font-size: 12px;
-  color: var(--text);
-  line-height: 1.25;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
-.gnode__badge {
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--error);
-  background: rgba(248, 113, 113, 0.14);
-  padding: 1px 5px;
-  border-radius: var(--radius-pill);
-  text-transform: uppercase;
+.cygraph__controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--bg-card);
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--t-instant) var(--ease-snap);
 }
-
-/* group colour families — left accent bar */
-.gnode--g-document { border-left: 3px solid var(--accent); }
-.gnode--g-section  { border-left: 3px solid var(--primary); }
-.gnode--g-fact     { border-left: 3px solid var(--teal); }
-.gnode--g-identity { border-left: 3px solid var(--pink); }
-.gnode--g-external { border-left: 3px solid var(--warn); }
-.gnode--g-proposal,
-.gnode--proposal {
-  border-left: 3px solid var(--error);
-  border-style: dashed;
-  background: rgba(248, 113, 113, 0.05);
+.cygraph__controls button:last-child { border-right: none; }
+.cygraph__controls button:hover { background: var(--bg-card-hover); }
+.cygraph__controls-text {
+  width: auto !important;
+  padding: 0 10px !important;
+  font-size: 11.5px;
+  white-space: nowrap;
 }
-
-/* edges */
-.gedge--identity .react-flow__edge-path { stroke: var(--teal); }
-/* the declared document DAG (amends/supersedes/novates) — a human statement,
-   heavier and solid so it never reads as the machine-matched identity edge */
-.gedge--chain .react-flow__edge-path { stroke: var(--warn); }
-.react-flow__edge-text {
-  font-size: 9px;
-  fill: var(--text-muted);
-  text-transform: lowercase;
-  letter-spacing: 0.02em;
-}
-.react-flow__edge-textbg { fill: var(--bg-app); fill-opacity: 0.85; }
 
 /* legend — also acts as a group show/hide filter */
 .legend {
