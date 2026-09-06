@@ -42,6 +42,7 @@
 }
 .adm__tabs button:hover { color: var(--text); }
 .adm__tabs button.is-active { color: var(--accent); border-bottom-color: var(--accent); }
+.adm__tab-copy, .adm__section-intro { display: none; }
 .adm__tab-n {
   margin-left: 6px; background: rgba(245, 200, 66, 0.15); color: #f5c842;
   border-radius: 8px; padding: 1px 7px; font-size: 10.5px;
@@ -96,6 +97,7 @@
 .adm__pager button:disabled { opacity: 0.4; cursor: default; }
 
 .adm__acct { display: flex; flex-direction: column; }
+.adm__acct-main { display: flex; min-width: 0; flex-direction: column; }
 .adm__acct-row { cursor: pointer; }
 .adm__acct-row:hover td { background: var(--bg-card-hover); }
 .adm__acct-row.is-editing td { background: var(--accent-soft); }
@@ -357,30 +359,53 @@
 
 @media (max-width: 760px) {
   .adm { padding: 12px 10px calc(14px + env(safe-area-inset-bottom)); }
-  .adm__head { align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+  .adm__head { align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
   .adm__head h2 { font-size: 16px; }
-  .adm__actions { flex-wrap: wrap; justify-content: flex-end; }
+  .adm__actions { width: 100%; flex-wrap: wrap; justify-content: stretch; }
   .adm__actions button { min-height: 38px; padding: 6px 10px; }
+  .adm__actions .adm__upload { flex: 1 1 160px; background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
   .adm__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
   .adm__stat { min-height: 92px; padding: 11px 12px; }
   .adm__stat:last-child { grid-column: span 2; min-height: 70px; }
   .adm__stat-v { font-size: 22px; }
   .adm__tabs {
-    gap: 4px;
-    margin: 0 -2px 10px;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin: 0 0 10px;
+    overflow: visible;
     border-bottom: 0;
-    padding: 2px 2px 4px;
+    padding: 0;
   }
   .adm__tabs button {
-    min-height: 38px;
-    flex: 0 0 auto;
+    position: relative;
+    display: flex;
+    min-height: 66px;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 3px;
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 6px 11px;
+    padding: 10px 11px;
     background: var(--bg-card);
+    text-align: left;
   }
+  .adm__tabs button:first-child { grid-column: 1 / -1; }
   .adm__tabs button.is-active { border-color: var(--accent); background: var(--accent-soft); }
+  .adm__tab-label { color: var(--text); font-size: 12.5px; }
+  .adm__tab-copy { display: block; color: var(--text-subtle); font-size: 10.5px; font-weight: 400; }
+  .adm__tab-n { position: absolute; top: 9px; right: 9px; margin: 0; }
+  .adm__section-intro {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: -2px 2px 10px;
+    color: var(--text-subtle);
+    font-size: 11.5px;
+  }
+  .adm__section-intro strong { color: var(--text-muted); font-size: 12px; }
   .adm__panel { padding: 10px; border-radius: 10px; }
   .adm__panel-h { align-items: flex-start; gap: 8px; }
   .adm__panel-act { flex-wrap: wrap; gap: 8px; }
@@ -395,6 +420,98 @@
     box-shadow: 8px 0 12px -12px rgba(0, 0, 0, 0.9);
   }
   .adm__table th:first-child { z-index: 3; }
+  /* Mobile sections keep their task-oriented information as cards instead of
+     making an operator pan across a desktop table for every row. */
+  .adm__scroll:has(.adm__table--cards) { overflow-x: hidden; }
+  .adm__table--cards {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+  }
+  .adm__table--cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .adm__table--cards, .adm__table--cards tbody, .adm__table--cards tr, .adm__table--cards td {
+    display: block;
+    width: 100%;
+  }
+  .adm__table--cards tr {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg-card);
+  }
+  .adm__table--cards td {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 39px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+  }
+  .adm__table--cards tr > td:first-child {
+    position: static;
+    z-index: auto;
+    border-top: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  .adm__table--cards td::before {
+    width: 96px;
+    flex: 0 0 96px;
+    color: var(--text-subtle);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .adm__table--cards td[data-label]::before { content: attr(data-label); }
+  .adm__table--folders td:nth-child(2)::before { content: "Documents"; }
+  .adm__table--folders td:nth-child(3)::before { content: "Updated"; }
+  .adm__table--matches td:nth-child(2)::before { content: "Folder"; }
+  .adm__table--documents td:nth-child(2)::before { content: "Type"; }
+  .adm__table--documents td:nth-child(3)::before { content: "Date"; }
+  .adm__table--documents td:nth-child(4)::before { content: "Status"; }
+  .adm__table--documents td:nth-child(5)::before { content: "Knowledge fields"; }
+  .adm__table--documents td:nth-child(6)::before { content: "Review"; }
+  .adm__table--usage td:nth-child(1)::before { content: "Person"; }
+  .adm__table--usage td:nth-child(2)::before { content: "Role"; }
+  .adm__table--usage td:nth-child(3)::before { content: "Sign-ins"; }
+  .adm__table--usage td:nth-child(4)::before { content: "Last sign-in"; }
+  .adm__table--usage td:nth-child(5)::before { content: "Questions"; }
+  .adm__table--usage td:nth-child(6)::before { content: "Tokens"; }
+  .adm__table--usage td:nth-child(7)::before { content: "Last question"; }
+  .adm__table--feedback td:nth-child(1)::before { content: "When"; }
+  .adm__table--feedback td:nth-child(2)::before { content: "From"; }
+  .adm__table--feedback td:nth-child(3)::before { content: "Category"; }
+  .adm__table--feedback td:nth-child(4)::before { content: "Message"; }
+  .adm__table--feedback td:nth-child(5)::before { content: "Status"; }
+  .adm__table--activity td:nth-child(1)::before { content: "When"; }
+  .adm__table--activity td:nth-child(2)::before { content: "Who"; }
+  .adm__table--activity td:nth-child(3)::before { content: "Kind"; }
+  .adm__table--activity td:nth-child(4)::before { content: "What"; }
+  .adm__table--accounts td:nth-child(1)::before { content: "Person"; }
+  .adm__table--accounts td:nth-child(2)::before { content: "Access level"; }
+  .adm__table--accounts td:nth-child(3)::before { content: "Verifier"; }
+  .adm__table--cards .adm__doc {
+    max-width: none;
+    white-space: normal;
+  }
+  .adm__table--cards td.adm__acct { flex-direction: row; }
+  .adm__table--cards .adm__num { text-align: left; }
+  .adm__table--cards .adm__fb-msg,
+  .adm__table--cards .adm__act-detail { max-width: none; white-space: normal; }
+  .adm__table--cards .adm__fb-when,
+  .adm__table--cards .adm__fb-who { width: auto; max-width: none; white-space: normal; }
+  .adm__table--cards .adm__reg-act { flex-wrap: wrap; }
+  .adm__table--cards .adm__edit-row { background: var(--bg-app); }
+  .adm__table--cards .adm__edit-row td { display: block; }
+  .adm__table--cards .adm__edit-row td::before { display: none; }
   .adm__doc { max-width: 190px; }
   .adm__search { min-height: 40px; }
   .adm__pager { padding-right: 0; flex-wrap: wrap; gap: 8px; }
