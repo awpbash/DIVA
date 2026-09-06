@@ -3,14 +3,18 @@
 .hm__empty { padding: 48px; text-align: center; color: var(--text-subtle); }
 .hm__empty code { background: var(--bg-card); padding: 2px 6px; border-radius: 5px; font-size: 12px; }
 
-.hm__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 14px 18px 10px; }
+.hm__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 14px 18px 10px; flex-wrap: wrap; }
 .hm__head h3 { margin: 0; font-size: 15px; font-weight: 600; }
 .hm__sub { margin: 4px 0 0; font-size: 12px; color: var(--text-subtle); max-width: 620px; line-height: 1.45; }
 .hm__overall { text-align: right; flex-shrink: 0; }
 .hm__overall-pct { display: block; font-size: 26px; font-weight: 700; color: #4dd4ac; line-height: 1; }
 .hm__overall-lbl { font-size: 11px; color: var(--text-subtle); }
 
-.hm__scroll { overflow: auto; padding: 0 18px; flex: 1; }
+/* min-width: 0 — same reason as ReviewDocList/Admin/Ontology's scroll
+   boxes: a documents-by-categories grid is genuinely wide, and without
+   this a flex child never shrinks below that width, so the grid doesn't
+   scroll inside this box on a phone, it grows the box past the screen. */
+.hm__scroll { overflow: auto; padding: 0 18px; flex: 1; min-width: 0; }
 .hm__table { border-collapse: separate; border-spacing: 3px; }
 .hm__corner, .hm__cat {
   position: sticky; top: 0; z-index: 2; background: var(--bg-app);
