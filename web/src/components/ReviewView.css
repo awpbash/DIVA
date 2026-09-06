@@ -389,3 +389,15 @@
   border-radius: 4px;
 }
 .review__kbdhint b { color: var(--text-muted); font-weight: 600; }
+
+/* Phone width — the contract page and its checklist stack instead of sitting
+   side by side (the two-column layout needs 700px+ just for its minimums).
+   The page keeps a bounded, scrollable height so the checklist below it is
+   always reachable without hunting. This is a browsing-friendly reflow, not
+   a redesign — real verification work is still meant for a desktop screen. */
+@media (max-width: 760px) {
+  .review__body { grid-template-columns: 1fr; grid-template-rows: 42vh 1fr; }
+  .review__page { border-right: none; border-bottom: 1px solid var(--border); }
+  .review__bar { padding: 10px 12px; }
+  .review__doc { max-width: none; flex: 1 1 100%; }
+}

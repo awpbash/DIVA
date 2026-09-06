@@ -1352,6 +1352,9 @@ button:focus-visible {
   padding: var(--s-4);
   overflow-y: auto;
 }
+/* Phone-only "Filters" button — opens the sidebar as a drawer instead of a
+   fixed column. Hidden here, shown inside the phone media query below. */
+.explorer__filters-btn { display: none; }
 
 .explorer__filter-group h4 {
   margin: 0 0 var(--s-2);
@@ -2234,5 +2237,29 @@ button:focus-visible {
   .composer { padding: 10px 12px 14px; }
   .pane__header { padding: 10px 14px; }
   .helpm__nav { display: none; }
+
+  /* Explore graph — the same three-fixed-columns problem as the top-level
+     app shell, same fix: filters and the detail panel come off the grid and
+     become a drawer / a full-screen sheet instead of side-by-side columns.
+     GraphExplorer.tsx sets grid-template-columns inline per state, which
+     beats a plain media-query rule, hence !important — there's no other way
+     to win against an inline style from here. */
+  .explorer { grid-template-columns: 1fr !important; }
+  .explorer__filters-btn { display: inline-flex; }
+  .explorer__sidebar {
+    position: fixed; top: 0; bottom: 0; left: 0;
+    width: min(300px, 85vw);
+    z-index: 76;
+    transform: translateX(-103%);
+    transition: transform 0.22s ease;
+    box-shadow: 0 0 48px rgba(0, 0, 0, 0.55);
+    border-right: 1px solid var(--border-strong);
+  }
+  .explorer--filters-open .explorer__sidebar { transform: none; }
+  .explorer__detail {
+    position: fixed; inset: 0; z-index: 72;
+    border-left: none;
+    padding-top: 46px;
+  }
 }
 
