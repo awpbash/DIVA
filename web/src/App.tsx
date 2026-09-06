@@ -318,7 +318,7 @@ function MainApp() {
       ) : tab === "explore" ? (
         <div className={`content ${pdfVisible && focusedEvidence ? "content--split" : ""}`}>
           <Suspense fallback={lazyFallback}>
-            <GraphExplorer doc={explorerDoc} onViewEvidence={handleViewEvidence} />
+            <GraphExplorer doc={explorerDoc} docs={docs} onViewEvidence={handleViewEvidence} />
             {pdfVisible && focusedEvidence && (
               <PdfPanel
                 doc={viewerDoc}

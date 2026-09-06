@@ -748,11 +748,15 @@ export async function getSubgraph(evidenceIds: string[]): Promise<GraphPayload> 
 
 export async function getOverviewGraph(opts: {
   docId?: string;
+  /** Contract family scope (every doc sharing one `group`). Ignored when
+   * docId is set. */
+  group?: string;
   labels?: string[];
   limit?: number;
 }): Promise<GraphPayload> {
   const parts: string[] = [];
   if (opts.docId) parts.push(`doc_id=${encodeURIComponent(opts.docId)}`);
+  else if (opts.group) parts.push(`group=${encodeURIComponent(opts.group)}`);
   for (const l of opts.labels ?? []) {
     parts.push(`labels=${encodeURIComponent(l)}`);
   }
@@ -767,8 +771,11 @@ export async function getOverviewGraph(opts: {
 /** Cross-doc identity lens: Documents and the identity hubs their facts
  * resolve to. A dedicated endpoint (not a filter of /overview) so a hub
  * spanning two documents is never clipped by the overview fact cap. */
-export async function getHubGraph(docId?: string): Promise<GraphPayload> {
-  const qs = docId ? `?doc_id=${encodeURIComponent(docId)}` : "";
+export async function getHubGraph(docId?: string, group?: string): Promise<GraphPayload> {
+  const parts: string[] = [];
+  if (docId) parts.push(`doc_id=${encodeURIComponent(docId)}`);
+  else if (group) parts.push(`group=${encodeURIComponent(group)}`);
+  const qs = parts.length ? `?${parts.join("&")}` : "";
   const r = await apiFetch(apiUrl(`/graph/hubs${qs}`), { headers: authHeaders() });
   if (!r.ok) throw new Error(`/graph/hubs: ${r.status}`);
   return r.json();
