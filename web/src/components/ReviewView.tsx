@@ -144,6 +144,9 @@ export function ReviewView() {
   // rest render faint. Click a value chip, a page highlight, or the stepper.
   const [activeValueIdx, setActiveValueIdx] = useState(0);
   const [page, setPage] = useState<number>(1);
+  // Phones show one deliberate task at a time: choose a field, then inspect
+  // its source page. Desktop keeps both panes visible through CSS.
+  const [mobilePane, setMobilePane] = useState<"fields" | "page">("fields");
   const [busy, setBusy] = useState<string | null>(null);
   // Page-block select modes: "Add evidence" attaches a missed clause to any
   // field; the correction editor's "Mark clause" anchors a proposed correction.
@@ -324,6 +327,7 @@ export function ReviewView() {
     setActiveKey(key);
     setActiveValueIdx(0);
     setEditingKey(null); setCorrPick(false);
+    setMobilePane("page");
     const f = r?.fields[key];
     const v0 = f?.values[0];
     if (!f || !v0) return;
@@ -507,7 +511,7 @@ export function ReviewView() {
   const sparse = rec != null && total > 0 && populated / total < 0.25;
 
   return (
-    <div className="review">
+    <div className={`review${mode === "doc" ? ` review--mobile-${mobilePane}` : ""}`}>
       <div className="review__bar">
         <div className="review__modes">
           <button className={mode === "overview" ? "is-active" : ""} onClick={() => setMode("overview")}>Overview</button>
@@ -599,6 +603,24 @@ export function ReviewView() {
             {rec.hidden_fields > 0 && <em> · {rec.hidden_fields} hidden</em>}
           </span>
         )}
+        {mode === "doc" && (
+          <div className="review__mobile-pane" role="tablist" aria-label="Review workspace">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobilePane === "fields"}
+              className={mobilePane === "fields" ? "is-active" : ""}
+              onClick={() => setMobilePane("fields")}
+            >Fields</button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobilePane === "page"}
+              className={mobilePane === "page" ? "is-active" : ""}
+              onClick={() => setMobilePane("page")}
+            >Source page</button>
+          </div>
+        )}
       </div>
 
       {mode === "doc" && rec?.can_edit && !queueMode && (
@@ -613,8 +635,8 @@ export function ReviewView() {
 
       {mode === "overview" ? (
         ovKind === "list"
-          ? <ReviewDocList onPick={id => { setDocId(id); setMode("doc"); }} />
-          : <ReviewHeatmap onPick={id => { setDocId(id); setMode("doc"); }} />
+          ? <ReviewDocList onPick={id => { setDocId(id); setMode("doc"); setMobilePane("fields"); }} />
+          : <ReviewHeatmap onPick={id => { setDocId(id); setMode("doc"); setMobilePane("fields"); }} />
       ) : (
       <div className="review__body">
         <div className="review__page">
@@ -853,6 +875,7 @@ export function ReviewView() {
                                 const r = parseRectsJson(f.verified_evidence?.rects)[0];
                                 if (r) setPage(r.page_no);
                                 else if (f.verified_evidence?.page != null) setPage(f.verified_evidence.page);
+                                setMobilePane("page");
                               }}
                             >
                               <span className="review__ev-kind review__ev-kind--human">clause</span>
@@ -920,6 +943,7 @@ export function ReviewView() {
                                 const pages = [...new Set(parseRects(ev).map(r => r.page_no))];
                                 const best = distinctivePage(f, pages) ?? ev.page;
                                 if (best != null) setPage(best);
+                                setMobilePane("page");
                               }}
                             >
                               <span className={`review__ev-kind review__ev-kind--${ev.kind}`}>{ev.kind}</span>

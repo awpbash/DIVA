@@ -126,31 +126,80 @@ button.ov__cat:hover, .ov__cat-btn:hover { background: var(--bg-card); }
 }
 .ov__form-save:disabled { opacity: 0.5; cursor: default; }
 
-/* Phone width — the category rail becomes a horizontal strip above the
-   table instead of eating half the screen, and the table scrolls sideways
-   inside .ov__scroll (which already handles overflow) rather than
-   squeezing every column unreadably thin. Adding and editing fields still
-   works here, just inside a wider-than-the-screen scrollable table — fine
-   for a quick edit, a full schema pass is still a desktop job. */
 @media (max-width: 760px) {
-  /* .ov__bar never wrapped before (fine on desktop: title, count, search,
-     one button, all on one line fits easily) — giving the search box
-     width:100% without letting the row wrap doesn't make it full-width, it
-     makes the row overflow, since the title and button still claim their
-     own space too. */
-  .ov__bar { padding: 10px 12px; flex-wrap: wrap; row-gap: 8px; }
-  .ov__search { width: 100%; margin-left: 0; order: 1; }
-  .ov__add { order: 2; }
-  .ov__body { flex-direction: column; }
+  .ov__bar { align-items: stretch; flex-wrap: wrap; gap: 9px; padding: 10px 12px; }
+  .ov__bar > div { flex: 1 1 100%; }
+  .ov__bar h2 { font-size: 15px; }
+  .ov__sub { display: block; margin-top: 2px; line-height: 1.4; }
+  .ov__search { order: 2; width: auto; min-width: 0; margin: 0; flex: 1 1 180px; min-height: 40px; }
+  .ov__add { order: 2; min-height: 40px; }
+  .ov__body { display: flex; flex-direction: column; }
   .ov__rail {
-    width: auto; flex-direction: row; overflow-x: auto; overflow-y: hidden;
-    border-right: none; border-bottom: 1px solid var(--border);
-    white-space: nowrap; padding: 8px 10px;
+    width: 100%;
+    min-height: 62px;
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 10px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
   }
-  .ov__cat, .ov__cat-btn { flex: 0 0 auto; }
-  .ov__main { padding: 10px 12px; }
-  .ov__table { min-width: 640px; }
-  /* Edit/delete are icon-sized text glyphs sized for a mouse pointer. */
-  .ov__actions button { padding: 8px 10px; min-height: 44px; min-width: 40px; }
-  .ov__cat-btn, button.ov__cat { min-height: 44px; }
+  .ov__cat { flex: 0 0 190px; background: var(--bg-card); border: 1px solid var(--border); }
+  .ov__cat.is-active { border-color: var(--accent); }
+  button.ov__cat { flex: 0 0 max-content; min-height: 40px; }
+  .ov__cat-btn { min-height: 40px; }
+  .ov__level { max-width: 88px; }
+  .ov__main { padding: 10px 10px calc(16px + env(safe-area-inset-bottom)); }
+  .ov__scroll { overflow-y: auto; border: 0; border-radius: 0; background: transparent; }
+  .ov__table, .ov__table tbody, .ov__table tr, .ov__table td { display: block; width: 100%; }
+  .ov__table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .ov__row {
+    display: block;
+    margin-bottom: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    background: var(--bg-card);
+  }
+  .ov__table td {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 9px 11px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ov__table td:last-child { border-bottom: 0; }
+  .ov__table td::before {
+    width: 92px;
+    flex: 0 0 92px;
+    color: var(--text-subtle);
+    content: attr(data-label);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .ov__table .ov__hint::before { content: "What DIVA looks for"; }
+  .ov__table td:has(.ov__level-pill)::before { content: "Access"; }
+  .ov__table .ov__field { display: block; min-width: 0; }
+  .ov__table .ov__field::before { display: block; width: auto; margin-bottom: 4px; }
+  .ov__hint { max-width: none; }
+  .ov__who { white-space: normal; }
+  .ov__actions { justify-content: flex-end; text-align: left; }
+  .ov__actions button { min-width: 36px; min-height: 36px; border: 1px solid var(--border); }
+  .ov__row-edit { margin-bottom: 10px; }
+  .ov__row-edit td { display: block; padding: 8px; }
+  .ov__row-edit td::before { display: none; }
+  .ov__form-row { display: block; }
+  .ov__form label { width: 100%; margin-bottom: 9px; }
+  .ov__form-actions { flex-wrap: wrap; }
+  .ov__form-actions button { min-height: 38px; }
 }

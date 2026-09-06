@@ -53,12 +53,12 @@ type AdminSection = "docs" | "accounts" | "usage" | "feedback" | "activity";
 // feedback inbox next (it carries the triage badge), then people and usage.
 // The registry is one-time master-data setup and the activity log is an audit
 // trail, so both sit at the end.
-const SECTIONS: { key: AdminSection; label: string }[] = [
-  { key: "docs", label: "Documents" },
-  { key: "feedback", label: "Feedback" },
-  { key: "accounts", label: "Accounts" },
-  { key: "usage", label: "Usage" },
-  { key: "activity", label: "Activity" },
+const SECTIONS: { key: AdminSection; label: string; description: string }[] = [
+  { key: "docs", label: "Documents", description: "Library and processing" },
+  { key: "feedback", label: "Feedback", description: "Triage reported issues" },
+  { key: "accounts", label: "Accounts", description: "People and access" },
+  { key: "usage", label: "Usage", description: "Adoption and cost" },
+  { key: "activity", label: "Activity", description: "Workspace history" },
 ];
 
 const RELATIONS: { value: NonNullable<UploadIntake["relation"]>; label: string }[] = [
@@ -337,6 +337,7 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
   const pctVerified = t.populated ? Math.round((t.verified / t.populated) * 100) : 0;
   const q14 = metrics ? metrics.daily.reduce((n, d) => n + d.questions, 0) : null;
   const tok14 = metrics ? metrics.daily.reduce((n, d) => n + d.tokens, 0) : 0;
+  const currentSection = SECTIONS.find(s => s.key === section) ?? SECTIONS[0];
 
   return (
     <div className="adm">
@@ -484,7 +485,7 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
         <Stat label="New feedback" value={fbCounts.new ?? 0} hint="awaiting triage" accent={(fbCounts.new ?? 0) > 0} />
       </div>
 
-      <div className="adm__tabs" role="tablist">
+      <div className="adm__tabs" role="tablist" aria-label="Admin sections">
         {SECTIONS.map(s => (
           <button
             key={s.key}
@@ -493,12 +494,17 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
             className={section === s.key ? "is-active" : ""}
             onClick={() => setSection(s.key)}
           >
-            {s.label}
+            <span className="adm__tab-label">{s.label}</span>
+            <span className="adm__tab-copy">{s.description}</span>
             {s.key === "feedback" && (fbCounts.new ?? 0) > 0 && (
               <span className="adm__tab-n">{fbCounts.new}</span>
             )}
           </button>
         ))}
+      </div>
+      <div className="adm__section-intro">
+        <strong>{currentSection.label}</strong>
+        <span>{currentSection.description}</span>
       </div>
 
       <div className="adm__body">
@@ -518,7 +524,7 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
             onChange={e => setDocQ(e.target.value)}
           />
           <div className="adm__scroll">
-            <table className="adm__table">
+            <table className="adm__table adm__table--cards adm__table--folders">
               <thead>
                 <tr>
                   <SortTh k="name" sort={foldSort} onSort={foldToggle}>Folder</SortTh>
@@ -536,7 +542,7 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
                     onClick={() => setOpenFolder(r.key)}
                     title={r.folder ? "Open this folder" : "Documents not filed in any folder yet"}
                   >
-                    <td className="adm__doc">
+                    <td className="adm__doc" data-label="Folder">
                       {r.name}
                       {!r.active && <span className="adm__pill" style={{ marginLeft: 6 }}>retired</span>}
                       {fj.running > 0 && (
@@ -571,7 +577,7 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
                 <div className="adm__reg-h">
                   <h4>Matching documents <span className="adm__count">{docMatches.length}</span></h4>
                 </div>
-                <table className="adm__table">
+                <table className="adm__table adm__table--cards adm__table--matches">
                   <thead><tr><th>Document</th><th>Folder</th></tr></thead>
                   <tbody>
                     {docMatches.map(d => (
@@ -581,7 +587,7 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
                         onClick={() => setOpenFolder(isLoose(d) ? LOOSE : d.group!)}
                         title="Open this document's folder"
                       >
-                        <td className="adm__doc" title={d.title}>{cleanTitle(d.title)}</td>
+                        <td className="adm__doc" data-label="Document" title={d.title}>{cleanTitle(d.title)}</td>
                         <td className="adm__muted">
                           {isLoose(d) ? LOOSE_LABEL : folderNames.get(d.group!) ?? d.group}
                         </td>
@@ -628,7 +634,7 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
             onChange={e => setDocQ(e.target.value)}
           />
           <div className="adm__scroll">
-            <table className="adm__table">
+            <table className="adm__table adm__table--cards adm__table--documents">
               <thead>
                 <tr>
                   <SortTh k="title" sort={docSort} onSort={docToggle}>Document</SortTh>
@@ -646,7 +652,7 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
                   const running = job?.status === "running";
                   return (
                     <tr key={d.doc_id}>
-                      <td className="adm__doc" title={d.title}>{cleanTitle(d.title)}</td>
+                      <td className="adm__doc" data-label="Document" title={d.title}>{cleanTitle(d.title)}</td>
                       <td className="adm__muted">{d.doc_type || "—"}</td>
                       <td className="adm__muted" style={{ whiteSpace: "nowrap" }}>{d.doc_date || "—"}</td>
                       <td>
@@ -669,7 +675,7 @@ export function AdminDashboard({ onOpenOntology, onGoReview }: Props) {
                           </span>
                         )}
                       </td>
-                      <td className="adm__reg-act">
+                      <td className="adm__reg-act" data-label="Actions">
                         {d.populated > 0 && (
                           <button className="adm__link" onClick={() => onGoReview(d.doc_id)}
                             title="Open this document in the Review screen, field by field">
@@ -1352,7 +1358,7 @@ function UsagePanel({ metrics: m, onRefresh }: { metrics: UsageMetrics | null; o
                 {needle ? "Nobody matches the filter." : "No usage recorded yet. Sign-ins and questions start counting from now."}
               </div>
             ) : (
-              <table className="adm__table">
+              <table className="adm__table adm__table--cards adm__table--usage">
                 <thead>
                   <tr>
                     <SortTh k="name" sort={sort} onSort={toggle}>Person</SortTh>
@@ -1375,8 +1381,10 @@ function UsagePanel({ metrics: m, onRefresh }: { metrics: UsageMetrics | null; o
                         title="Click to chart this person's week"
                       >
                         <td className="adm__acct">
-                          <span className="adm__acct-name">{u.name}</span>
-                          <span className="adm__acct-meta">{u.email}</span>
+                          <span className="adm__acct-main">
+                            <span className="adm__acct-name">{u.name}</span>
+                            <span className="adm__acct-meta">{u.email}</span>
+                          </span>
                         </td>
                         <td><span className={`adm__pill adm__role--${u.role}`}>{u.role}</span></td>
                         <td className="adm__num">{u.logins || "—"}</td>
@@ -1475,7 +1483,7 @@ function FeedbackPanel({ onCounts }: { onCounts?: (c: Record<string, number>) =>
               : filter === "new" ? "No new feedback. Inbox zero." : "Nothing here."}
           </div>
         ) : (
-          <table className="adm__table">
+          <table className="adm__table adm__table--cards adm__table--feedback">
             <thead>
               <tr>
                 <SortTh k="when" sort={sort} onSort={toggle}>When</SortTh>
@@ -1643,7 +1651,7 @@ function ActivityPanel() {
             {needle || kind ? "Nothing matches the filter." : "No activity yet."}
           </div>
         ) : (
-          <table className="adm__table">
+          <table className="adm__table adm__table--cards adm__table--activity">
             <thead>
               <tr>
                 <SortTh k="when" sort={sort} onSort={toggle}>When</SortTh>
@@ -1800,7 +1808,7 @@ export function AccountManager({ accounts, onChanged }: { accounts: Account[]; o
 
       <input className="adm__search" placeholder="Search accounts…" value={q} onChange={e => setQ(e.target.value)} />
       <div className="adm__scroll">
-        <table className="adm__table">
+        <table className="adm__table adm__table--cards adm__table--accounts">
           <thead>
             <tr>
               <SortTh k="name" sort={sort} onSort={toggle}>Person</SortTh>
@@ -1817,8 +1825,10 @@ export function AccountManager({ accounts, onChanged }: { accounts: Account[]; o
                   title="Click to edit this account"
                 >
                   <td className="adm__acct">
-                    <span className="adm__acct-name">{a.name || a.email}</span>
-                    <span className="adm__acct-meta">{a.title || a.email}</span>
+                    <span className="adm__acct-main">
+                      <span className="adm__acct-name">{a.name || a.email}</span>
+                      <span className="adm__acct-meta">{a.title || a.email}</span>
+                    </span>
                   </td>
                   <td onClick={e => e.stopPropagation()}>
                     <select className={`adm__role adm__role--${a.role}`} value={a.role} disabled={busy === a.email}

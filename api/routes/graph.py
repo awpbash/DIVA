@@ -722,8 +722,10 @@ async def overview(
 #
 # Where /overview is the whole graph (700+ nodes), the lens is the *point* of
 # the cross-document KB distilled: which documents name the same real-world
-# entity (Document → canonical hub via resolved facts). No sections, no
-# intra-doc facts.
+# party. Its primary relation is the declared Document → CanonicalParty edge;
+# the knowledge fields that resolve to that party are supporting context, not
+# nodes masquerading as the relationship itself. No sections, no intra-doc
+# detail.
 #
 # It has its OWN endpoint (not a filter of /overview) so it is never clipped
 # by the overview fact cap — a hub that spans two contracts must always show
@@ -734,13 +736,15 @@ async def overview(
             dependencies=[Depends(require_clearance)])
 async def hubs(doc_id: str | None = Query(default=None),
                group: str | None = Query(default=None)) -> GraphPayload:
-    """The cross-document identity lens.
+    """The document-to-party entity map.
 
-    Nodes: Documents and the identity hubs their facts resolve to. Edges:
-    ``HAS_ENTITY`` (Document → hub, with a fact count and a few sample names, a
-    derived display edge). Scope is one document (``doc_id``), one contract
-    family (``group``), or every document when both are null, which is the
-    whole reason the lens exists.
+    Nodes: Documents and canonical party hubs. Edges: ``HAS_PARTY``
+    (Document → party, with the party's role and the knowledge fields that
+    corroborate it). ``RESOLVES_TO`` is an implementation-level relation from
+    an internal knowledge field to a party; it is used only to supply that
+    support context, never shown as the document relationship. Scope is one
+    document (``doc_id``), one contract family (``group``), or every document
+    when both are null.
 
     It used to carry a second layer, grounding each hub onto an external
     customer/block register. Those registers were one deployment's master data
@@ -771,48 +775,115 @@ async def hubs(doc_id: str | None = Query(default=None),
             [{"name": "@g", "value": group}])
         doc_ids = [r["doc_id"] for r in rows]
 
-    # One concurrent wave for every edge lens + the documents, then one
-    # batched wave for the items those edges reference. Per-item point reads
-    # are a full round trip each on real Azure — never loop them here.
+    # One concurrent wave for the direct party links, their supporting field
+    # resolutions, and the document metadata. `HAS_PARTY` is the business
+    # relationship people should see. `RESOLVES_TO` is deliberately kept
+    # behind it: surfacing a field → hub relation as document structure made
+    # the old explorer both technically accurate and semantically confusing.
     def _doc_params() -> list[dict]:
         return [] if doc_ids is None else [{"name": "@docs", "value": doc_ids}]
 
-    resolve_edges, doc_rows = await asyncio.gather(
+    party_edges, resolve_edges, doc_rows, agreement_rows = await asyncio.gather(
+        store.query(
+            "SELECT c.pk, c.src, c.tgt, c.role, c.current FROM c WHERE "
+            "c.kind = 'edge' AND c.rel = 'HAS_PARTY'"
+            + (" AND ARRAY_CONTAINS(@docs, c.pk)" if doc_ids is not None else ""),
+            _doc_params()),
         store.query(
             "SELECT c.pk, c.src, c.tgt FROM c WHERE c.kind = 'edge' AND "
             "c.rel = 'RESOLVES_TO'"
             + (" AND ARRAY_CONTAINS(@docs, c.pk)" if doc_ids is not None else ""),
             _doc_params()),
-        store.query("SELECT * FROM c WHERE c.kind = 'document'"),
+        store.query(
+            "SELECT * FROM c WHERE c.kind = 'document'"
+            + (" AND ARRAY_CONTAINS(@docs, c.doc_id)" if doc_ids is not None else ""),
+            _doc_params()),
+        store.query(
+            "SELECT c.doc_id, c.title FROM c WHERE c.kind = 'agreement'"
+            + (" AND ARRAY_CONTAINS(@docs, c.doc_id)" if doc_ids is not None else ""),
+            _doc_params()),
     )
-    doc_cache = {d["id"]: d for d in doc_rows}
-    hub_ids = sorted({e["tgt"] for e in resolve_edges})
-    hubs_map, fact_cache = await asyncio.gather(
-        store.fetch_many(hub_ids, pk="global"),
-        # Only the display-name fields — facts can be numerous here.
-        store.fetch_many(sorted({e["src"] for e in resolve_edges}),
-                         select=["name", "term", "address"]),
+    doc_cache = {d["doc_id"]: d for d in doc_rows}
+    agreement_titles = {
+        str(a["doc_id"]): str(a["title"])
+        for a in agreement_rows if a.get("title")
+    }
+    hub_ids = sorted({e["tgt"] for e in [*party_edges, *resolve_edges]})
+    source_ids = sorted({e["src"] for e in resolve_edges})
+    hub_rows, source_rows = await asyncio.gather(
+        store.query(
+            "SELECT * FROM c WHERE c.kind = 'hub' AND ARRAY_CONTAINS(@ids, c.id)",
+            [{"name": "@ids", "value": hub_ids}]) if hub_ids else asyncio.sleep(0, result=[]),
+        # These sources are currently `opsfield` items. Keep only relationship
+        # context — not their values — because the party node is the entity and
+        # the fields merely explain why it is attached to this document.
+        store.query(
+            "SELECT c.id, c.title, c.field_key, c.category, c.has_evidence "
+            "FROM c WHERE ARRAY_CONTAINS(@ids, c.id)",
+            [{"name": "@ids", "value": source_ids}]) if source_ids else asyncio.sleep(0, result=[]),
     )
+    hubs_map = {h["id"]: h for h in hub_rows}
+    source_map = {s["id"]: s for s in source_rows}
 
-    # Documents → identity hubs (via the RESOLVES_TO edge items, whose pk IS
-    # the citing doc), with how many facts map to the hub + a few names.
-    per_pair: dict[tuple[str, str], dict] = {}
+    # Supporting knowledge fields, grouped per document/party pair. They make
+    # a selected relationship explainable without incorrectly calling an
+    # `opsfield` a graph fact. A small field-name sample is enough for the
+    # inspector; the source document remains the place to view the value.
+    support_by_pair: dict[tuple[str, str], dict] = {}
     for e in resolve_edges:
-        f = fact_cache.get(e["src"])
-        slot = per_pair.setdefault((e["pk"], e["tgt"]), {"n": 0, "names": []})
+        f = source_map.get(e["src"]) or {}
+        slot = support_by_pair.setdefault((e["pk"], e["tgt"]), {"n": 0, "fields": [], "evidence": 0})
         slot["n"] += 1
-        name = (f or {}).get("name") or (f or {}).get("term") or (f or {}).get("address")
-        if name and name not in slot["names"] and len(slot["names"]) < 3:
-            slot["names"].append(name)
-    for (did, hid), agg in per_pair.items():
+        if f.get("has_evidence"):
+            slot["evidence"] += 1
+        field = f.get("title") or f.get("field_key") or f.get("category")
+        if field and field not in slot["fields"] and len(slot["fields"]) < 3:
+            slot["fields"].append(str(field).replace("_", " "))
+
+    # The relation the graph actually means: this document names this party.
+    # `current` is present only for family-aware party links, so preserve the
+    # distinction between a known historic party and a link with no timeline
+    # verdict.
+    for e in party_edges:
+        did, hid = e["pk"], e["tgt"]
         d = _node_to_payload(doc_cache.get(did))
         hub = _hub_to_payload(hubs_map.get(hid))
         if d is None or hub is None:
             continue
+        # A document's generic doctype is identical across a contract family,
+        # so it makes the cross-document lens unreadable. The corresponding
+        # Agreement carries the extracted, human-facing title.
+        d.title = agreement_titles.get(str(did), d.title)
         nodes[d.id] = d
         nodes.setdefault(hub.id, hub)
-        add_edge(d.id, hub.id, "HAS_ENTITY", {
-            "facts": agg["n"], "names": agg["names"],
-        })
+        support = support_by_pair.get((did, hid), {})
+        props = {
+            "mentions": support.get("n", 0),
+            "fields": support.get("fields", []),
+            "evidence": support.get("evidence", 0),
+        }
+        if e.get("role"):
+            props["role"] = e["role"]
+        if e.get("current") is not None:
+            props["current"] = bool(e["current"])
+        add_edge(d.id, hub.id, "HAS_PARTY", props)
+
+    # Older data may not have the declared HAS_PARTY edge yet. Preserve a
+    # usable lens for it, but name the fallback honestly as a derived entity
+    # link rather than presenting it as document structure.
+    if not party_edges:
+        for (did, hid), support in support_by_pair.items():
+            d = _node_to_payload(doc_cache.get(did))
+            hub = _hub_to_payload(hubs_map.get(hid))
+            if d is None or hub is None:
+                continue
+            d.title = agreement_titles.get(str(did), d.title)
+            nodes[d.id] = d
+            nodes.setdefault(hub.id, hub)
+            add_edge(d.id, hub.id, "HAS_ENTITY", {
+                "mentions": support["n"],
+                "fields": support["fields"],
+                "evidence": support["evidence"],
+            })
 
     return GraphPayload(nodes=list(nodes.values()), edges=edges)

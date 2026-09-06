@@ -182,7 +182,7 @@ export function OntologyEditor(props: OntologyEditorProps) {
                     </tr>
                   ) : (
                     <tr key={f.full_key} className="ov__row">
-                      <td className="ov__field">
+                      <td className="ov__field" data-label="Field">
                         <span className="ov__field-title">
                           {f.title}
                           {f.user_field && <span className="ov__yours" title="A field your team added. The AI extracts it from its description.">✎ yours</span>}
@@ -192,21 +192,21 @@ export function OntologyEditor(props: OntologyEditorProps) {
                           <span className="ov__enum">{f.values.filter(v => v !== "Not Stated").join(" · ")}</span>
                         )}
                       </td>
-                      {active === "all" && <td className="ov__cat-cell">{cat.title}</td>}
-                      <td><span className={`ov__type ov__type--${f.type}`}>{TYPE_LABEL[f.type] ?? f.type}</span></td>
+                      {active === "all" && <td className="ov__cat-cell" data-label="Category">{cat.title}</td>}
+                      <td data-label="Type"><span className={`ov__type ov__type--${f.type}`}>{TYPE_LABEL[f.type] ?? f.type}</span></td>
                       <td className="ov__hint">{f.hint || <em className="ov__none">—</em>}</td>
                       <td>
                         <span className={`ov__level-pill${f.sensitivity === "confidential" ? " is-conf" : ""}`}>
                           {f.sensitivity === "confidential" ? "🔒" : "general"}
                         </span>
                       </td>
-                      <td className="ov__who">
+                      <td className="ov__who" data-label="Last edited">
                         {f.updated_by
                           ? <span title={f.updated_at ?? ""}>{f.updated_by.split("@")[0]}</span>
                           : <em className="ov__none">—</em>}
                       </td>
                       {canEdit && (
-                        <td className="ov__actions">
+                        <td className="ov__actions" data-label="Actions">
                           <button disabled={busy} title="Edit"
                             onClick={() => { setEditing(f.full_key); setAdding(false); }}>✎</button>
                           <button disabled={busy} title={f.user_field ? "Delete" : "Hide from the schema"}

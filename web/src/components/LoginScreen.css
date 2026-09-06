@@ -68,3 +68,14 @@
 }
 .login__acct:hover { border-color: var(--accent); color: var(--text); }
 .login__acct:disabled { opacity: 0.5; cursor: default; }
+
+@media (max-width: 760px) {
+  .login { align-items: flex-start; padding: max(16px, env(safe-area-inset-top)) 16px 24px; }
+  .login__card { width: 100%; margin: auto 0; padding: 24px 20px; }
+  .login__card h1 { font-size: 23px; }
+  .login__form { flex-direction: column; }
+  .login__form input, .login__form button { min-height: 46px; font-size: 15px; }
+  .login__form button { width: 100%; }
+  .login__accounts { gap: 8px; }
+  .login__acct { min-height: 38px; }
+}
