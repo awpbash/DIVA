@@ -72,9 +72,11 @@ jobs:
         with:
           version: 9
 
+      # jsdom 30 calls an undici internal (webidl.util.markAsUncloneable)
+      # that only exists from Node 22 onward, so Node 20 throws mid-test-run.
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
 
