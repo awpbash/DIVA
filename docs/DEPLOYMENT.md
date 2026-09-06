@@ -172,5 +172,16 @@ docker compose -f docker-compose.prod.yml exec app \
   python -m scripts.accounts list
 ```
 
+On a host without `docker compose exec` (Railway's `railway ssh`, and the
+equivalent on most others), the shell you land in is root, even though the
+running server dropped to uid 1000 back in `api/boot_seed.py`. Any file a
+root shell creates under `storage/` is then unreadable to the server itself.
+Prefix one-off commands with `scripts/run_unprivileged.py` to drop first:
+
+```bash
+railway ssh --service app -- python scripts/run_unprivileged.py \
+  python -m scripts.accounts list
+```
+
 For symptoms and fixes, see [Troubleshooting](troubleshooting.md). For the
 complete environment list, see [Reference](reference.md).
