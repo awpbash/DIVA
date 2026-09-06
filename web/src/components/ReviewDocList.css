@@ -18,8 +18,12 @@
 .rdl__tot-l { font-size: 11px; color: var(--text-muted); }
 .rdl__tot-s { font-size: 11px; color: var(--text-subtle); }
 
-.rdl__scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); }
-.rdl__table { width: 100%; border-collapse: collapse; font-size: 13px; }
+/* min-width: 0 matters here — without it, a flex child defaults to never
+   shrinking below its content's width, so the table below just grew this
+   box (and everything above it) wider than the screen instead of scrolling
+   inside it, the horizontal twin of the min-height:0 scroll bug. */
+.rdl__scroll { flex: 1; min-height: 0; min-width: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); }
+.rdl__table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px; }
 .rdl__table thead th {
   position: sticky; top: 0; z-index: 1;
   text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase;

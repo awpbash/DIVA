@@ -48,17 +48,22 @@
 }
 
 /* The scrollable zone: exactly one section panel, filling the leftover height. */
-.adm__body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.adm__body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
 .adm__panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
-.adm__panel--wide { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.adm__panel--wide { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
 .adm__panel h3 { margin: 0 0 10px; font-size: 14px; }
 .adm__panel-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex: 0 0 auto; }
 .adm__panel-h h3 { margin: 0; }
 .adm__count { font-size: 11px; color: var(--text-subtle); background: var(--bg-app); border-radius: 10px; padding: 1px 8px; margin-left: 6px; }
 .adm__link { background: transparent; border: none; color: var(--accent); font-size: 12px; cursor: pointer; }
 
-/* The one scroll area per section. Table headers stay pinned inside it. */
-.adm__scroll { flex: 1; min-height: 0; overflow-y: auto; }
+/* The one scroll area per section. Table headers stay pinned inside it.
+   min-width: 0 on this and its two ancestors above matters on a phone: a
+   flex child in a column layout defaults to never shrinking below its
+   content's own width, so without it a wide table doesn't scroll inside
+   this box, it just grows the box (and everything above it) past the
+   screen — the horizontal twin of the min-height:0 scroll bug. */
+.adm__scroll { flex: 1; min-height: 0; min-width: 0; overflow-y: auto; }
 .adm__table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .adm__table th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-subtle); padding: 4px 8px; position: sticky; top: 0; background: var(--bg-card); z-index: 1; }
 .adm__table td { padding: 6px 8px; border-top: 1px solid var(--border); vertical-align: middle; }
