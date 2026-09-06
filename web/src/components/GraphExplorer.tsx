@@ -4,7 +4,7 @@
  *   ┌──── filters ────┐  ┌──── canvas (ExploreCanvas) ──┐  ┌── inspect ──┐
  *   │ search…         │  │  Doc → Agreement → Section → │  │ props +     │
  *   │ category chips  │  │  Fact → Hub/Ext/Proposal     │  │ provenance  │
- *   │ group toggles   │  │  (expand a section to drill) │  │ + PDF jump  │
+ *   │ group toggles   │  │  (spine only — click to open)│  │ + PDF jump  │
  *   │ legend          │  │                              │  │             │
  *   └─────────────────┘  └──────────────────────────────┘  └─────────────┘
  *
@@ -19,7 +19,9 @@ import { getHubGraph, getOverviewGraph } from "../api";
 import { DocumentMeta, GraphEdge, GraphNode, GraphPayload } from "../types";
 import { ExploreCanvas, ViewMode } from "./ExploreCanvas";
 import { GraphInspector } from "./GraphInspector";
-import { groupColorVar, groupForLabel, labelsInGroup, useGraphLegend } from "./graphTheme";
+import {
+  groupColorVar, groupForLabel, labelsInGroup, nodeSearchText, useGraphLegend,
+} from "./graphTheme";
 import { IconClose, IconPanelRight } from "./Icon";
 
 
@@ -29,20 +31,27 @@ import { IconClose, IconPanelRight } from "./Icon";
 
 const DEFAULT_NODE_CAP = 220;
 
+// Sentinel for the explicit "every document" choice in the family picker,
+// distinct from `null` (families not loaded yet).
+const ALL_FAMILIES = "__all__";
+
 // Stale-while-revalidate cache so tab-switches don't refetch.
 const OVERVIEW_CACHE = new Map<string, GraphPayload>();
-const cacheKey = (docId: string | null, labels: string[], limit: number) =>
-  `${docId ?? "__all"}::${[...labels].sort().join(",")}::${limit}`;
+const cacheKey = (docId: string | null, group: string | undefined, labels: string[], limit: number) =>
+  `${docId ?? group ?? "__all"}::${[...labels].sort().join(",")}::${limit}`;
 
 
 interface Props {
   doc: DocumentMeta | null;
+  /** Every document, for the contract-family picker (ignored once `doc`
+   * scopes to a single contract). */
+  docs: DocumentMeta[];
   /** Jump to a citation in the PDF panel — reuses the chat citation flow. */
   onViewEvidence?: (evidenceId: string, docId: string) => void;
 }
 
 
-export function GraphExplorer({ doc, onViewEvidence }: Props) {
+export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
   const legend = useGraphLegend();
   const factLabels = useMemo(
     () => [...labelsInGroup("fact")].filter(l => l !== "Fact").sort(),
@@ -58,6 +67,7 @@ export function GraphExplorer({ doc, onViewEvidence }: Props) {
   const [limit, setLimit] = useState(DEFAULT_NODE_CAP);
   const [loading, setLoading] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   // "full" = the whole graph (expand-on-click); "lens" = the cross-doc
   // identity story only.
   const [viewMode, setViewMode] = useState<ViewMode>("full");
@@ -74,9 +84,35 @@ export function GraphExplorer({ doc, onViewEvidence }: Props) {
 
   const docId = doc?.doc_id ?? null;
 
+  // Contract families, derived from the document list — same grouping rule
+  // the KB uses (a shared `group` is one amendment chain; ungrouped = its
+  // own family). Landing on "every document" merged every unrelated chain
+  // into one shared layout by default, which is what made the graph look
+  // like a wall of nodes meaning nothing — so the default here is ONE
+  // family, exactly like the Knowledge tab already defaults to `f[0]`.
+  const families = useMemo(() => {
+    const map = new Map<string, { key: string; name: string; count: number }>();
+    for (const d of docs) {
+      const key = d.group || d.doc_id;
+      const name = d.group_name || d.group || d.title;
+      const entry = map.get(key) ?? { key, name, count: 0 };
+      entry.count += 1;
+      map.set(key, entry);
+    }
+    return [...map.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }, [docs]);
+
+  const [familyKey, setFamilyKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (doc) return; // an explicit single-contract scope always wins
+    setFamilyKey(prev => (prev && families.some(f => f.key === prev)) ? prev : (families[0]?.key ?? null));
+  }, [families, doc]);
+
+  const groupParam = !doc && familyKey && familyKey !== ALL_FAMILIES ? familyKey : undefined;
+
   useEffect(() => {
     const labelList = [...labels];
-    const key = `${viewMode}::${cacheKey(docId, labelList, limit)}`;
+    const key = `${viewMode}::${cacheKey(docId, groupParam, labelList, limit)}`;
     const cached = OVERVIEW_CACHE.get(key);
     if (cached) {
       setPayload(cached);
@@ -87,11 +123,11 @@ export function GraphExplorer({ doc, onViewEvidence }: Props) {
     // Clear first so a lens layout never paints over stale full-graph nodes.
     setPayload({ nodes: [], edges: [] });
     let cancelled = false;
-    // docId === null => all-documents (cross-doc) view. Both endpoints treat
-    // a missing doc_id as "span every contract", which is the lens's whole point.
+    // docId and groupParam both null => every document (cross-doc) — the
+    // explicit "All documents" choice, or the fallback before families load.
     const fetcher = viewMode === "lens"
-      ? getHubGraph(docId ?? undefined)
-      : getOverviewGraph({ docId: docId ?? undefined, labels: labelList, limit });
+      ? getHubGraph(docId ?? undefined, groupParam)
+      : getOverviewGraph({ docId: docId ?? undefined, group: groupParam, labels: labelList, limit });
     fetcher
       .then(p => {
         OVERVIEW_CACHE.set(key, p);
@@ -104,7 +140,7 @@ export function GraphExplorer({ doc, onViewEvidence }: Props) {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docId, labels, limit, viewMode]);
+  }, [docId, groupParam, labels, limit, viewMode]);
 
   // Esc exits focus mode.
   useEffect(() => {
@@ -123,6 +159,18 @@ export function GraphExplorer({ doc, onViewEvidence }: Props) {
     }
     return c;
   }, [payload]);
+
+  const searchNeedle = searchQuery.trim().toLowerCase();
+  const matchCount = useMemo(() => {
+    if (!searchNeedle) return 0;
+    return payload.nodes.filter(n => nodeSearchText(n).includes(searchNeedle)).length;
+  }, [payload, searchNeedle]);
+
+  const scopeName = doc
+    ? doc.title
+    : familyKey && familyKey !== ALL_FAMILIES
+      ? (families.find(f => f.key === familyKey)?.name ?? "family")
+      : "all documents";
 
   const hasSelection = !!selectedNode || !!selectedEdge;
   const showDetail = !focusMode && hasSelection;
@@ -149,7 +197,7 @@ export function GraphExplorer({ doc, onViewEvidence }: Props) {
       <div className="pane__header">
         <div className="pane__title">Knowledge graph</div>
         <div className="pane__subtitle">
-          · {doc ? doc.title : "all documents"} · {payload.nodes.length} nodes / {payload.edges.length} edges
+          · {scopeName} · {payload.nodes.length} nodes / {payload.edges.length} edges
         </div>
         {loading && <div className="pane__loading">loading…</div>}
         <div style={{ flex: 1 }} />
@@ -193,6 +241,38 @@ export function GraphExplorer({ doc, onViewEvidence }: Props) {
       >
         {showSidebar && (
           <aside className="explorer__sidebar">
+            <div className="explorer__filter-group">
+              <h4>Search</h4>
+              <input
+                type="text"
+                className="explorer__search"
+                placeholder="Find a node by name or value…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <div className="explorer__range-readout">
+                  {matchCount} match{matchCount === 1 ? "" : "es"}
+                </div>
+              )}
+            </div>
+
+            {!doc && families.length > 1 && (
+              <div className="explorer__filter-group">
+                <h4>Contract family</h4>
+                <select
+                  className="explorer__select"
+                  value={familyKey ?? ALL_FAMILIES}
+                  onChange={e => setFamilyKey(e.target.value)}
+                >
+                  {families.map(f => (
+                    <option key={f.key} value={f.key}>{f.name} ({f.count})</option>
+                  ))}
+                  <option value={ALL_FAMILIES}>All documents ({docs.length})</option>
+                </select>
+              </div>
+            )}
+
             <div className="explorer__filter-group">
               <h4>Legend</h4>
               <div className="legend">
@@ -272,6 +352,7 @@ export function GraphExplorer({ doc, onViewEvidence }: Props) {
               <ul>
                 {viewMode === "full" ? (
                   <>
+                    <li>Click a document to reveal its sections.</li>
                     <li>Click a section to reveal its facts.</li>
                     <li>Click a node to inspect it and trace it to its source.</li>
                     <li>Click a dashed edge to see why the link was made.</li>
@@ -298,6 +379,7 @@ export function GraphExplorer({ doc, onViewEvidence }: Props) {
               selectedNodeId={selectedNode?.id ?? null}
               onSelectNode={n => { setSelectedNode(n); if (n) setSelectedEdge(null); }}
               onSelectEdge={e => { setSelectedEdge(e); if (e) setSelectedNode(null); }}
+              search={searchQuery}
             />
           </div>
         </main>

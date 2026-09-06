@@ -10,7 +10,10 @@
  * returned. When provenance is absent we say so plainly rather than guess —
  * "not in the documents" is a correct answer.
  */
-import { GraphEdge, GraphNode } from "../types";
+import { useEffect, useState } from "react";
+import { getEvidence, kmPageUrl } from "../api";
+import { EvidenceDetail, GraphEdge, GraphNode } from "../types";
+import { AuthedImage } from "./AuthedImage";
 import { groupColorVar, groupForLabel, isProposalNode } from "./graphTheme";
 import { IconClose, IconDocument } from "./Icon";
 
@@ -139,6 +142,7 @@ function NodeInspector({
           {snippet && (
             <blockquote className="inspector__snippet">“{snippet}”</blockquote>
           )}
+          {evidenceId && docId && <EvidencePreview evidenceId={evidenceId} docId={docId} />}
           {evidenceId && docId && onViewEvidence && (
             <button
               type="button"
@@ -170,6 +174,51 @@ function NodeInspector({
         </div>
       )}
     </>
+  );
+}
+
+
+// A cropped page image with the clause highlighted, right in the panel — the
+// same crop the "View highlight in PDF" jump opens full-size, so checking a
+// fact's source doesn't cost leaving the tab. Same machinery as the
+// Knowledge tab's evidence pane (kmPageUrl + AuthedImage + percentage rects).
+function EvidencePreview({ evidenceId, docId }: { evidenceId: string; docId: string }) {
+  const [ev, setEv] = useState<EvidenceDetail | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setEv(null);
+    setFailed(false);
+    getEvidence(evidenceId)
+      .then(e => { if (alive) setEv(e); })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [evidenceId]);
+
+  if (failed) return null; // the PDF jump below still works
+  if (!ev) return <div className="inspector__ev-loading" />;
+
+  const rects = (ev.rects ?? []).filter(r => r.page_no === ev.page_no);
+  if (!rects.length) return null;
+
+  return (
+    <div className="inspector__ev-page">
+      <AuthedImage src={kmPageUrl(docId, ev.page_no)} alt={`page ${ev.page_no}`} />
+      {rects.map((r, i) => {
+        const [x0, y0, x1, y1] = r.bbox;
+        return (
+          <div
+            key={i}
+            className="inspector__ev-hl"
+            style={{
+              left: `${x0 * 100}%`, top: `${y0 * 100}%`,
+              width: `${(x1 - x0) * 100}%`, height: `${(y1 - y0) * 100}%`,
+            }}
+          />
+        );
+      })}
+    </div>
   );
 }
 

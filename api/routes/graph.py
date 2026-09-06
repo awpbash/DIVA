@@ -474,6 +474,7 @@ def _proposal_to_payload(p) -> GraphNode | None:
             dependencies=[Depends(require_clearance)])
 async def overview(
     doc_id: str | None = Query(default=None),
+    group: str | None = Query(default=None),
     labels: list[str] = Query(default=[]),
     limit_nodes: int = Query(default=200, ge=10, le=600),
 ) -> GraphPayload:
@@ -488,11 +489,16 @@ async def overview(
         the PDF highlight without a second round-trip
       * identity hubs (whatever the active pack declares) via RESOLVES_TO,
         with method / confidence / signals carried as edge props
+      * the document-level DAG — AMENDS / SUPERSEDES / NOVATES, the uploader's
+        declared relation between contracts (pipeline/kb/intake.py), already
+        computed for chain-role resolution but never drawn here before
       * deterministic fact-to-fact edges (CONDITIONED_ON, TRIGGERED_BY, …)
       * quarantined :Proposal nodes (flagged so the UI can mark them unverified)
 
-    When ``doc_id`` is null the view spans every loaded contract (cross-doc),
-    which is the whole point of the identity hubs.
+    Scope is one document (``doc_id``), one contract family (``group`` — the
+    same value an amendment shares with the base it amends), or every loaded
+    contract when both are null, which is the whole point of the identity
+    hubs. ``doc_id`` wins if both are given.
     """
     store = deps.get_store()
     nodes: dict[str, GraphNode] = {}
@@ -514,10 +520,26 @@ async def overview(
     label_filter = list(labels) if labels else sorted(load_pack().fact_labels)
     label_set = list({l for l in label_filter})
 
-    scope_sql = "true" if doc_id is None else "c.doc_id = @doc"
+    # A single doc, a whole family (every doc sharing one `group`, per
+    # pipeline/kb/intake.py), or every document (both unset).
+    doc_ids: list[str] | None = None
+    if doc_id:
+        doc_ids = [doc_id]
+    elif group:
+        rows = await store.query(
+            # Bracket, not dot: GROUP is a Cosmos SQL reserved word (same
+            # reason `c["order"]` is used elsewhere in this file) — `c.group`
+            # parses but silently fails to filter, matching every document.
+            "SELECT c.doc_id FROM c WHERE c.kind = 'document' AND c[\"group\"] = @g",
+            [{"name": "@g", "value": group}])
+        # A family with no members left is a real empty result, not "give me
+        # everything" — @docs on an empty list matches nothing, correctly.
+        doc_ids = [r["doc_id"] for r in rows]
+
+    scope_sql = "true" if doc_ids is None else "ARRAY_CONTAINS(@docs, c.doc_id)"
 
     def _params() -> list[dict]:
-        return [] if doc_id is None else [{"name": "@doc", "value": doc_id}]
+        return [] if doc_ids is None else [{"name": "@docs", "value": doc_ids}]
 
     # 1) One concurrent wave per independent kind. Everything below resolves
     #    per-item lookups from these in-RAM maps: a store.point is a full
@@ -559,6 +581,15 @@ async def overview(
         nodes[a.id] = a
         d = _node_to_payload(docs.get(a_item["doc_id"]))
         if d is not None:
+            # A Document's own title is its doctype ("commercial_agreement"),
+            # identical across every document of one domain — invisible in a
+            # single-document view, but every box in a multi-document family
+            # view reads the same, indistinguishable at a glance. Its Agreement
+            # is always exactly one (this pipeline never writes more than one
+            # per document) and carries the real, per-contract title straight
+            # from extraction rather than the optional intake sidecar, so
+            # borrow it.
+            d.title = a.title
             nodes[d.id] = d
             add_edge(d.id, a.id, "CONTAINS_AGREEMENT")
         secs = sorted(sections_by_doc.get(a_item["doc_id"], []),
@@ -638,6 +669,35 @@ async def overview(
             nodes.setdefault(ghub.id, ghub)
             add_edge(e["src"], ghub.id, "RESOLVES_TO")
 
+    # 4.5) Document-level DAG — declared AMENDS/SUPERSEDES/NOVATES between
+    #      documents (the uploader's relation at intake, materialised by
+    #      build_km for chain-role resolution). Computed already; never drawn
+    #      here before, so a corpus that IS a set of amendment chains rendered
+    #      as disconnected documents with no explanation of how they relate.
+    #      An endpoint outside the current scope (e.g. viewing just one
+    #      amendment, not its base) is pulled in so the edge has somewhere
+    #      to land.
+    doc_node_ids = [nid for nid, gn in nodes.items() if gn.label == "Document"]
+    if doc_node_ids:
+        dag_edges = await store.query(
+            "SELECT * FROM c WHERE c.kind = 'edge' AND "
+            "ARRAY_CONTAINS(['AMENDS', 'SUPERSEDES', 'NOVATES'], c.rel) AND "
+            "(ARRAY_CONTAINS(@ids, c.src) OR ARRAY_CONTAINS(@ids, c.tgt))",
+            [{"name": "@ids", "value": doc_node_ids}])
+        missing = sorted({d for e in dag_edges for d in (e["src"], e["tgt"])} - set(nodes))
+        if missing:
+            extra_docs = await store.query(
+                "SELECT * FROM c WHERE c.kind = 'document' AND "
+                "ARRAY_CONTAINS(@ids, c.doc_id)",
+                [{"name": "@ids", "value": missing}])
+            for d_item in extra_docs:
+                gd = _node_to_payload(d_item)
+                if gd is not None:
+                    nodes.setdefault(gd.id, gd)
+        for e in dag_edges:
+            if e["src"] in nodes and e["tgt"] in nodes:
+                add_edge(e["src"], e["tgt"], e["rel"], _clean_edge_props(e))
+
     # 5) Quarantined proposals (per-document; flagged unverified in the UI).
     by_doc: dict[str, list[dict]] = defaultdict(list)
     for p in proposals:
@@ -672,13 +732,15 @@ async def overview(
 
 @router.get("/hubs", response_model=GraphPayload,
             dependencies=[Depends(require_clearance)])
-async def hubs(doc_id: str | None = Query(default=None)) -> GraphPayload:
+async def hubs(doc_id: str | None = Query(default=None),
+               group: str | None = Query(default=None)) -> GraphPayload:
     """The cross-document identity lens.
 
     Nodes: Documents and the identity hubs their facts resolve to. Edges:
     ``HAS_ENTITY`` (Document → hub, with a fact count and a few sample names, a
-    derived display edge). When ``doc_id`` is null it spans every document,
-    which is the whole reason the lens exists.
+    derived display edge). Scope is one document (``doc_id``), one contract
+    family (``group``), or every document when both are null, which is the
+    whole reason the lens exists.
 
     It used to carry a second layer, grounding each hub onto an external
     customer/block register. Those registers were one deployment's master data
@@ -699,17 +761,28 @@ async def hubs(doc_id: str | None = Query(default=None)) -> GraphPayload:
             id=eid, source=src, target=tgt, type=etype, props=props or {},
         ))
 
+    doc_ids: list[str] | None = None
+    if doc_id:
+        doc_ids = [doc_id]
+    elif group:
+        rows = await store.query(
+            # Bracket, not dot — see the matching comment in overview() above.
+            "SELECT c.doc_id FROM c WHERE c.kind = 'document' AND c[\"group\"] = @g",
+            [{"name": "@g", "value": group}])
+        doc_ids = [r["doc_id"] for r in rows]
+
     # One concurrent wave for every edge lens + the documents, then one
     # batched wave for the items those edges reference. Per-item point reads
     # are a full round trip each on real Azure — never loop them here.
     def _doc_params() -> list[dict]:
-        return [] if doc_id is None else [{"name": "@doc", "value": doc_id}]
+        return [] if doc_ids is None else [{"name": "@docs", "value": doc_ids}]
 
     resolve_edges, doc_rows = await asyncio.gather(
         store.query(
             "SELECT c.pk, c.src, c.tgt FROM c WHERE c.kind = 'edge' AND "
             "c.rel = 'RESOLVES_TO'"
-            + (" AND c.pk = @doc" if doc_id is not None else ""), _doc_params()),
+            + (" AND ARRAY_CONTAINS(@docs, c.pk)" if doc_ids is not None else ""),
+            _doc_params()),
         store.query("SELECT * FROM c WHERE c.kind = 'document'"),
     )
     doc_cache = {d["id"]: d for d in doc_rows}

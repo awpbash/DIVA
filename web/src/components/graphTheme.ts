@@ -122,3 +122,15 @@ export function isProposalNode(n: GraphNode): boolean {
   const status = (n.props?.["status"] as string) || "";
   return status === "pending" || status === "proposed";
 }
+
+/** Plain-text haystack for the Explore search box: title + type + every prop
+ * value, lower-cased once so a query is a single substring check. Nothing
+ * fancy — the payload's already in memory, so this is what "queryable" means
+ * for a graph this size. */
+export function nodeSearchText(n: GraphNode): string {
+  const propsText = Object.values(n.props || {})
+    .map(v => (v === null || v === undefined) ? ""
+      : typeof v === "object" ? JSON.stringify(v) : String(v))
+    .join(" ");
+  return `${n.title} ${n.label} ${propsText}`.toLowerCase();
+}

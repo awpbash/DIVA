@@ -1389,6 +1389,25 @@ button:focus-visible {
   font-family: var(--font-mono);
 }
 
+.explorer__search,
+.explorer__select {
+  width: 100%;
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 9px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.explorer__select { cursor: pointer; }
+.explorer__search:focus,
+.explorer__select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.explorer__search::placeholder { color: var(--text-subtle); }
+
 .explorer__chips {
   display: flex;
   flex-wrap: wrap;
@@ -1505,6 +1524,13 @@ button:focus-visible {
   border-color: var(--accent-strong);
   box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow);
 }
+/* Search: matches ring in amber (distinct from the selection ring above),
+   everything else fades back so a hit reads at a glance in a big graph. */
+.gnode--match {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35), var(--shadow);
+}
+.gnode--dim { opacity: 0.35; }
 .gnode__dot {
   flex: 0 0 auto;
   width: 9px; height: 9px;
@@ -1554,6 +1580,9 @@ button:focus-visible {
 
 /* edges */
 .gedge--identity .react-flow__edge-path { stroke: var(--teal); }
+/* the declared document DAG (amends/supersedes/novates) — a human statement,
+   heavier and solid so it never reads as the machine-matched identity edge */
+.gedge--chain .react-flow__edge-path { stroke: var(--warn); }
 .react-flow__edge-text {
   font-size: 9px;
   fill: var(--text-muted);
@@ -1662,6 +1691,29 @@ button:focus-visible {
   color: var(--text-subtle);
   font-style: italic;
   line-height: 1.5;
+}
+
+/* Inline evidence crop — same look as the Knowledge tab's evidence pane. */
+.inspector__ev-page {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: var(--s-2) 0;
+}
+.inspector__ev-page img { display: block; width: 100%; }
+.inspector__ev-hl {
+  position: absolute;
+  background: rgba(245, 200, 66, 0.32);
+  border: 1px solid rgba(245, 200, 66, 0.8);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.inspector__ev-loading {
+  height: 80px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  margin: var(--s-2) 0;
 }
 .inspector__pdf-btn {
   display: inline-flex;
