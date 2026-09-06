@@ -149,12 +149,19 @@ button:focus-visible {
   display: grid;
   grid-template-columns: 268px 1fr;
   height: 100vh;
+  /* On a phone, 100vh is the height with the address bar hidden — taller
+     than what's actually on screen most of the time. Everything below this
+     is clipped to it (overflow: hidden, by design, so only named regions
+     scroll), so the overshoot doesn't scroll into view, it just cuts the
+     bottom of the app off. dvh tracks the real visible viewport instead;
+     the plain vh above is the fallback for browsers that don't know dvh. */
+  height: 100dvh;
   overflow: hidden;
   background: var(--bg-app);
 }
 .app-boot {
   display: flex; align-items: center; justify-content: center;
-  height: 100vh; color: var(--text-subtle); font-size: 14px; background: var(--bg-app);
+  height: 100vh; height: 100dvh; color: var(--text-subtle); font-size: 14px; background: var(--bg-app);
 }
 
 /* sidebar -------------------------------------------------------------- */
@@ -2067,7 +2074,7 @@ button:focus-visible {
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .policy-panel {
-  width: min(560px, 92vw); max-height: 84vh; display: flex; flex-direction: column;
+  width: min(560px, 92vw); max-height: 84vh; max-height: 84dvh; display: flex; flex-direction: column;
   background: var(--bg-app); border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg); box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   overflow: hidden;
@@ -2235,7 +2242,15 @@ button:focus-visible {
   }
   .chat__scroll { padding: 16px 14px 10px; }
   .composer { padding: 10px 12px 14px; }
-  .pane__header { padding: 10px 14px; }
+  /* A header that never wraps (fine on desktop, where it's one title, one
+     count, two buttons) hits a hard wall on a phone once a tab — Explore
+     graph especially — packs a title, a count, a two-way toggle, and two
+     icon buttons into it: the excess doesn't scroll into view, it's clipped
+     by the app shell's overflow:hidden, so a button can end up completely
+     unreachable, not just tight. Letting it wrap is the fix, not shrinking
+     text further. */
+  .pane__header { padding: 10px 14px; flex-wrap: wrap; row-gap: 6px; }
+  .pane__header-spacer { flex-basis: 100%; height: 0; }
   .helpm__nav { display: none; }
 
   /* Explore graph — the same three-fixed-columns problem as the top-level
@@ -2261,5 +2276,15 @@ button:focus-visible {
     border-left: none;
     padding-top: 46px;
   }
+
+  /* Touch targets. A mouse pointer forgives a 28px icon button; a fingertip
+     doesn't. These sized for a cursor, not a thumb. */
+  .mobilebar button { width: 44px; height: 44px; }
+  .pane__icon-btn {
+    min-width: 44px; min-height: 44px;
+    justify-content: center;
+  }
+  .sidebar__nav-item { min-height: 44px; }
+  .graph-mode__btn { padding: 9px 14px; }
 }
 

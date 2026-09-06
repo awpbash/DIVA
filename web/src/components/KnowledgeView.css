@@ -57,7 +57,7 @@
 /* Phone width — already single-column above; just stop the sticky evidence
    panel from taking most of the screen when a field's evidence is showing. */
 @media (max-width: 760px) {
-  .kb__evidence { max-height: 45vh; }
+  .kb__evidence { max-height: 45vh; max-height: 45dvh; }
   .kb__bar { flex-wrap: wrap; row-gap: 8px; }
   .kb__filter { width: 100%; }
 }
@@ -98,7 +98,10 @@
 
 /* Evidence pane — sticks while the field list scrolls; scrolls internally when
    the page image is taller than the viewport. */
-.kb__evidence { position: sticky; top: 0; align-self: start; max-height: calc(100vh - 90px); overflow-y: auto; }
+.kb__evidence {
+  position: sticky; top: 0; align-self: start; overflow-y: auto;
+  max-height: calc(100vh - 90px); max-height: calc(100dvh - 90px);
+}
 .kb__ev-empty, .kb__ev-note { color: var(--text-subtle); font-size: 12px; padding: 16px; text-align: center; }
 .kb__ev-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .kb__ev-snip { font-size: 12px; color: var(--text-muted); font-style: italic; margin-bottom: 8px; line-height: 1.5; }
