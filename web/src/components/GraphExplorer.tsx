@@ -22,7 +22,7 @@ import { GraphInspector } from "./GraphInspector";
 import {
   groupColorVar, groupForLabel, labelsInGroup, nodeSearchText, useGraphLegend,
 } from "./graphTheme";
-import { IconClose, IconPanelRight } from "./Icon";
+import { IconClose, IconFilter, IconPanelRight } from "./Icon";
 
 
 // The fact labels the extractor emits, for the category filter chips. Comes
@@ -68,6 +68,11 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
   const [loading, setLoading] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Phone width only: filters live in a slide-in drawer instead of a fixed
+  // column (there's no room for three side-by-side panels on a phone
+  // screen). The button that opens it is hidden by CSS above the phone
+  // breakpoint, so this state does nothing on desktop.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // "full" = the whole graph (expand-on-click); "lens" = the cross-doc
   // identity story only.
   const [viewMode, setViewMode] = useState<ViewMode>("full");
@@ -222,6 +227,17 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
             Cross-doc lens
           </button>
         </div>
+        {showSidebar && (
+          <button
+            type="button"
+            className="pane__icon-btn explorer__filters-btn"
+            onClick={() => setFiltersOpen(o => !o)}
+            title="Filters"
+            aria-label="Filters"
+          >
+            <IconFilter size={14} />
+          </button>
+        )}
         <button
           type="button"
           className="pane__icon-btn"
@@ -234,11 +250,12 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
       </div>
 
       <div
-        className="explorer"
+        className={`explorer${filtersOpen ? " explorer--filters-open" : ""}`}
         style={{
           gridTemplateColumns: `${showSidebar ? "260px " : ""}1fr${showDetail ? " 340px" : ""}`,
         }}
       >
+        {filtersOpen && <div className="mobile-scrim" onClick={() => setFiltersOpen(false)} />}
         {showSidebar && (
           <aside className="explorer__sidebar">
             <div className="explorer__filter-group">

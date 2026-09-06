@@ -121,3 +121,23 @@ button.ov__cat:hover, .ov__cat-btn:hover { background: var(--bg-card); }
   border-radius: 7px; padding: 6px 16px; font-weight: 600; font-size: 12px; cursor: pointer;
 }
 .ov__form-save:disabled { opacity: 0.5; cursor: default; }
+
+/* Phone width — the category rail becomes a horizontal strip above the
+   table instead of eating half the screen, and the table scrolls sideways
+   inside .ov__scroll (which already handles overflow) rather than
+   squeezing every column unreadably thin. Adding and editing fields still
+   works here, just inside a wider-than-the-screen scrollable table — fine
+   for a quick edit, a full schema pass is still a desktop job. */
+@media (max-width: 760px) {
+  .ov__bar { padding: 10px 12px; }
+  .ov__search { width: 100%; margin-left: 0; }
+  .ov__body { flex-direction: column; }
+  .ov__rail {
+    width: auto; flex-direction: row; overflow-x: auto; overflow-y: hidden;
+    border-right: none; border-bottom: 1px solid var(--border);
+    white-space: nowrap; padding: 8px 10px;
+  }
+  .ov__cat, .ov__cat-btn { flex: 0 0 auto; }
+  .ov__main { padding: 10px 12px; }
+  .ov__table { min-width: 640px; }
+}

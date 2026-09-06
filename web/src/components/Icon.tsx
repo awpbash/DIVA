@@ -28,6 +28,7 @@ const wrap = (children: JSX.Element, size = 16) => (
 export const IconPlus       = ({ size }: Props) => wrap(<><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></>, size);
 export const IconMinus      = ({ size }: Props) => wrap(<line x1="5" y1="12" x2="19" y2="12" />, size);
 export const IconFit        = ({ size }: Props) => wrap(<><polyline points="8 3 3 3 3 8" /><polyline points="16 3 21 3 21 8" /><polyline points="3 16 3 21 8 21" /><polyline points="21 16 21 21 16 21" /></>, size);
+export const IconFilter     = ({ size }: Props) => wrap(<polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4" />, size);
 export const IconChat       = ({ size }: Props) => wrap(<path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z" />, size);
 export const IconGraph      = ({ size }: Props) => wrap(<><circle cx="6" cy="6" r="2.4" /><circle cx="18" cy="6" r="2.4" /><circle cx="6" cy="18" r="2.4" /><circle cx="18" cy="18" r="2.4" /><line x1="8.4" y1="6" x2="15.6" y2="6" /><line x1="6" y1="8.4" x2="6" y2="15.6" /><line x1="8" y1="16" x2="16" y2="8" /></>, size);
 export const IconSend       = ({ size }: Props) => wrap(<><line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" /></>, size);
