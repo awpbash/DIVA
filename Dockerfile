@@ -80,18 +80,23 @@ COPY docs/ docs/
 # The built SPA — served by FastAPI (see api/main.py, SPA fallback).
 COPY --from=webbuild /web/dist web/dist
 
-# Drop root. This process parses PDFs and page images from wherever the
-# operator got them, so it should not be uid 0. uid 1000 is deliberate: it is
-# the first non-system uid on Linux and therefore the one that owns a
+# This process parses PDFs and page images from wherever the operator got
+# them, so it should not run as uid 0. uid 1000 is deliberate: it is the
+# first non-system uid on Linux and therefore the one that owns a
 # bind-mounted ./storage created by an ordinary host user, which is what
-# compose does. If your host user is not 1000, override it in compose with
-#   user: "${UID}:${GID}"
-# and make sure ./storage is writable by that user. Docker Desktop on Windows
-# and macOS makes bind mounts writable regardless, so this only bites on Linux.
+# compose does.
+#
+# NOT dropped here with a USER directive, though: a cloud volume (Railway,
+# Fly, ...) mounts fresh and root-owned at container start regardless of
+# what the image says, the mount replaces whatever this RUN step chowned.
+# The image starts as root; api/boot_seed.py chowns the actual runtime
+# storage path once it can see it, then drops to uid 1000 itself before
+# exec'ing uvicorn. Local dev never reaches that code (compose overrides
+# `command:` straight to uvicorn), so docker-compose.yml sets `user: "1000:1000"`
+# itself to keep the same non-root posture there.
 RUN useradd --create-home --uid 1000 app \
  && mkdir -p /app/storage \
  && chown -R app:app /app
-USER app
 
 # storage/ holds uploaded PDFs and every pipeline artifact. compose bind-mounts
 # it; a cloud host should attach a persistent volume there. It is the one

@@ -38,6 +38,11 @@ services:
       # COSMOS_KEY in .env to point at a real account instead.
       COSMOS_URI: "${COSMOS_URI:-http://cosmos:8081}"
       COSMOS_KEY: "${COSMOS_KEY:-}"
+    # The image no longer drops root itself (see Dockerfile) — that's now
+    # api/boot_seed.py's job, for the cloud boot path this compose file
+    # bypasses entirely via the command: override below. Set it explicitly
+    # here instead, so local dev keeps running as non-root same as before.
+    user: "1000:1000"
     # Hot reload: uvicorn watches the mounted SOURCE directories and restarts on
     # edit. Scoped to source only, because watching the large, pipeline-written
     # storage/ tree would be slow and would reload on every cache write.

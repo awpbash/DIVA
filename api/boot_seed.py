@@ -81,7 +81,31 @@ def _seed_if_empty() -> None:
               f"whatever storage holds", flush=True)
 
 
+def _drop_privileges(uid: int = 1000, gid: int = 1000) -> None:
+    """A cloud volume (Railway, Fly, ...) mounts fresh and root-owned at
+    container start, no matter what the image's USER directive says, the
+    mount replaces whatever ownership the image baked in at that path. If
+    we're root, chown the storage root once — that alone is enough, since
+    owning a directory is enough to create entries under it — then step
+    down to the uid the image would otherwise have run as, so a bug in the
+    app itself never runs as root. A no-op when already unprivileged (local
+    compose sets `user:` itself and never reaches this path).
+    """
+    if os.geteuid() != 0:
+        return
+    root = os.environ.get("STORAGE_ROOT", "storage")
+    os.makedirs(root, exist_ok=True)
+    try:
+        os.chown(root, uid, gid)
+    except OSError as exc:
+        print(f"[boot] WARN: could not chown {root} ({exc}), staying root", flush=True)
+        return
+    os.setgid(gid)
+    os.setuid(uid)
+
+
 def main() -> None:
+    _drop_privileges()
     _seed_if_empty()
     os.execvp(sys.executable, [
         sys.executable, "-m", "uvicorn", "api.main:app",
