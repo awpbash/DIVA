@@ -1534,6 +1534,14 @@ button:focus-visible {
   border-color: var(--accent-strong);
   box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow);
 }
+.gnode--connected {
+  border-color: color-mix(in srgb, var(--accent) 72%, var(--border-strong));
+  box-shadow: 0 0 0 1px rgba(196, 181, 253, 0.18), var(--shadow-sm);
+}
+.gnode--context-dim {
+  opacity: 0.18;
+  filter: saturate(0.35);
+}
 /* Search: matches ring in amber (distinct from the selection ring above),
    everything else fades back so a hit reads at a glance in a big graph. */
 .gnode--match {
@@ -1615,6 +1623,9 @@ button:focus-visible {
 /* the declared document DAG (amends/supersedes/novates) — a human statement,
    heavier and solid so it never reads as the machine-matched identity edge */
 .gedge--chain .react-flow__edge-path { stroke: var(--warn); }
+.gedge--focus .react-flow__edge-path { stroke-width: 2.35px; filter: drop-shadow(0 0 3px rgba(196, 181, 253, 0.45)); }
+.gedge--focus .react-flow__edge-text { fill: var(--text); font-weight: 700; }
+.gedge--context-dim .react-flow__edge-text { opacity: 0.2; }
 .react-flow__edge-text {
   font-size: 9px;
   fill: var(--text-muted);

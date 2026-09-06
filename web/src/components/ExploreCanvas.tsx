@@ -25,6 +25,7 @@ import ReactFlow, {
   Edge,
   Handle,
   MiniMap,
+  MarkerType,
   Node,
   NodeProps,
   Position,
@@ -41,7 +42,7 @@ import {
   labelsInGroup,
   nodeSearchText,
 } from "./graphTheme";
-import { IconChevron, IconCompass, IconLayers } from "./Icon";
+import { IconChevron, IconClose, IconCompass, IconLayers } from "./Icon";
 
 
 // ---------------------------------------------------------------------------
@@ -256,6 +257,9 @@ interface ExploreNodeData {
   group: string;
   proposal: boolean;
   selected?: boolean;
+  /** Relationship context applied after layout. A selected node and its direct
+   * neighbours stay prominent; every unrelated node recedes. */
+  context?: "selected" | "connected" | "dim";
   /** Set only while a search is active: true = matches, false = doesn't
    * (dimmed). Undefined when no search is running — no highlight either way. */
   highlight?: boolean;
@@ -273,6 +277,8 @@ function GlyphNode({ data, selected }: NodeProps<ExploreNodeData>) {
     data.proposal && "gnode--proposal",
     selected && "gnode--selected",
     data.expanded && "gnode--expanded",
+    data.context === "connected" && "gnode--connected",
+    data.context === "dim" && "gnode--context-dim",
     data.highlight === true && "gnode--match",
     data.highlight === false && "gnode--dim",
   ].filter(Boolean).join(" ");
@@ -306,13 +312,21 @@ function GlyphNode({ data, selected }: NodeProps<ExploreNodeData>) {
 function displayNodeLabel(label: string, group: string): string {
   const words = label.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ");
   if (group === "identity" && words.toLowerCase().startsWith("canonical ")) {
-    return `Shared ${words.slice("canonical ".length)}`;
+    return words.slice("canonical ".length);
   }
   return words;
 }
 
-function displayEdgeLabel(type: string): string {
-  if (type === "HAS_ENTITY") return "shares";
+function readableRelation(value: string): string {
+  return value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").toLowerCase();
+}
+
+function displayEdgeLabel(type: string, props: Record<string, unknown> = {}): string {
+  if (type === "HAS_PARTY") {
+    const role = props["role"];
+    return typeof role === "string" && role ? readableRelation(role) : "party";
+  }
+  if (type === "HAS_ENTITY") return "mentions";
   return type.replace(/_/g, " ").toLowerCase();
 }
 
@@ -491,7 +505,7 @@ function buildGraph(
       source: e.source,
       target: e.target,
       type: "smoothstep",
-      label: displayEdgeLabel(e.type),
+      label: displayEdgeLabel(e.type, e.props),
       labelBgPadding: [4, 2],
       labelBgBorderRadius: 4,
       data: { raw: e },
@@ -501,6 +515,12 @@ function buildGraph(
         stroke: isIdentity ? "var(--teal)" : isChain ? "var(--warn)" : "rgba(255,255,255,0.18)",
         strokeWidth: isIdentity ? 1.6 : isChain ? 1.8 : 1.1,
         strokeDasharray: isIdentity ? "5 3" : undefined,
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: isIdentity ? "var(--teal)" : isChain ? "var(--warn)" : "rgba(255,255,255,0.38)",
+        width: 16,
+        height: 16,
       },
     });
   }
@@ -517,6 +537,7 @@ export interface ExploreCanvasProps {
   payload: GraphPayload;
   hiddenGroups: Set<string>;
   selectedNodeId: string | null;
+  selectedEdgeId?: string | null;
   onSelectNode: (n: GraphNode | null) => void;
   onSelectEdge: (e: GraphEdge | null) => void;
   /** "full" (whole graph, expand-on-click) or "lens" (cross-doc hubs only). */
@@ -535,7 +556,7 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
 }
 
 function Inner({
-  payload, hiddenGroups, selectedNodeId, onSelectNode, onSelectEdge,
+  payload, hiddenGroups, selectedNodeId, selectedEdgeId = null, onSelectNode, onSelectEdge,
   mode = "full", search = "",
 }: ExploreCanvasProps) {
   // Agreements/sections the user has opened. Both start closed: the default
@@ -642,17 +663,51 @@ function Inner({
     });
   }, [laid, sig, base]);
 
-  // Selection overlay — cheap map, no re-layout. Drives both react-flow's
-  // `selected` (the GlyphNode prop) and data.selected for styling.
+  // Selection is a graph operation, not only a details-panel operation: keep
+  // the selected node/edge and its immediate neighbourhood visible, and fade
+  // unrelated topology. This makes a party click answer "which documents name
+  // it?" in one glance without destroying the wider graph or re-running ELK.
+  const selectedEdge = useMemo(
+    () => selectedEdgeId ? base.edges.find(e => e.id === selectedEdgeId) ?? null : null,
+    [base.edges, selectedEdgeId],
+  );
+  const contextIds = useMemo(() => {
+    if (selectedEdge) return new Set([selectedEdge.source, selectedEdge.target]);
+    if (!selectedNodeId) return new Set<string>();
+    const ids = new Set([selectedNodeId]);
+    for (const e of base.edges) {
+      if (e.source === selectedNodeId) ids.add(e.target);
+      if (e.target === selectedNodeId) ids.add(e.source);
+    }
+    return ids;
+  }, [base.edges, selectedNodeId, selectedEdge]);
+  const hasContext = contextIds.size > 0;
+
+  // Cheap visual overlay — selection never changes layout.
   const nodes = useMemo(
     () => positioned.map(n => ({
       ...n,
       selected: n.id === selectedNodeId,
-      data: { ...n.data, selected: n.id === selectedNodeId },
+      data: {
+        ...n.data,
+        selected: n.id === selectedNodeId,
+        context: !hasContext ? undefined
+          : n.id === selectedNodeId ? "selected"
+            : contextIds.has(n.id) ? "connected" : "dim",
+      },
     })),
-    [positioned, selectedNodeId],
+    [positioned, selectedNodeId, hasContext, contextIds],
   );
-  const edges = base.edges;
+  const edges = useMemo(() => base.edges.map(e => {
+    const inContext = selectedEdge
+      ? e.id === selectedEdge.id
+      : !!selectedNodeId && (e.source === selectedNodeId || e.target === selectedNodeId);
+    return {
+      ...e,
+      className: `${e.className || ""}${hasContext ? inContext ? " gedge--focus" : " gedge--context-dim" : ""}`,
+      style: { ...e.style, opacity: hasContext && !inContext ? 0.12 : 1 },
+    };
+  }), [base.edges, hasContext, selectedEdge, selectedNodeId]);
 
   const { fitView } = useReactFlow();
   useEffect(() => {
@@ -736,13 +791,15 @@ function Inner({
       <div className="explore-canvas__guide">
         <div className="explore-canvas__guide-count">
           <IconLayers size={14} />
-          <strong>{base.nodes.length} in view</strong>
-          {base.nodes.length < payload.nodes.length && <span>of {payload.nodes.length} loaded</span>}
+          <strong>{hasContext ? `${Math.max(0, contextIds.size - 1)} direct relation${contextIds.size === 2 ? "" : "s"}` : `${base.nodes.length} in view`}</strong>
+          {!hasContext && base.nodes.length < payload.nodes.length && <span>of {payload.nodes.length} loaded</span>}
         </div>
         <p>
-          {mode === "full"
+          {hasContext
+            ? "Selection focus keeps only the connected path prominent. Click the canvas or clear focus to restore the whole graph."
+            : mode === "full"
             ? "Open cards with a chevron to reveal their next level of detail."
-            : "Follow the coloured links to see what connects documents."}
+            : "Each arrow names a party relationship. Select a party to trace every connected document."}
         </p>
       </div>
 
@@ -751,6 +808,12 @@ function Inner({
           <IconCompass size={14} />
           Center graph
         </button>
+        {hasContext && (
+          <button type="button" onClick={() => { onSelectNode(null); onSelectEdge(null); }}>
+            <IconClose size={14} />
+            Clear focus
+          </button>
+        )}
         {mode === "full" && agreementsWithSections.size > 0 && (
           <button type="button" onClick={toggleStructure}>
             <IconLayers size={14} />

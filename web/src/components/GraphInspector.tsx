@@ -45,6 +45,17 @@ function fmt(v: unknown): string {
   return String(v);
 }
 
+function readableLabel(label: string): string {
+  if (label === "CanonicalParty") return "Party";
+  return label.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ");
+}
+
+function readableRole(role: unknown): string {
+  return typeof role === "string"
+    ? role.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ")
+    : "";
+}
+
 
 export function GraphInspector({ node, edge, fallbackDocId, onViewEvidence, onClose }: Props) {
   if (edge) return <EdgeInspector edge={edge} onClose={onClose} />;
@@ -113,7 +124,7 @@ function NodeInspector({
           className="chip chip--label"
           style={{ color: groupColorVar(group), borderColor: "transparent" }}
         >
-          {node.label}
+          {readableLabel(node.label)}
         </span>
         {proposal && <span className="inspector__flag inspector__flag--warn">unverified</span>}
         {typeof confidence === "number" && (
@@ -229,14 +240,19 @@ function EdgeInspector({ edge, onClose }: { edge: GraphEdge; onClose: () => void
   const confidence = props["confidence"];
   const signals = props["signals"];
   const sharedEntity = edge.type === "HAS_ENTITY";
-  const asserted = edge.type === "RESOLVES_TO" || sharedEntity;
-  const factCount = props["facts"];
-  const names = props["names"];
+  const partyRelation = edge.type === "HAS_PARTY";
+  const asserted = edge.type === "RESOLVES_TO" || sharedEntity || partyRelation;
+  const mentionCount = props["mentions"] ?? props["facts"];
+  const fields = props["fields"] ?? props["names"];
+  const role = props["role"];
+  const current = props["current"];
+  const evidence = props["evidence"];
 
   const otherRows = Object.entries(props).filter(
     ([k, v]) =>
       k !== "method" && k !== "confidence" && k !== "signals" &&
-      k !== "facts" && k !== "names" &&
+      k !== "facts" && k !== "names" && k !== "mentions" &&
+      k !== "fields" && k !== "role" && k !== "current" && k !== "evidence" &&
       v !== null && v !== undefined && v !== "",
   );
 
@@ -244,32 +260,55 @@ function EdgeInspector({ edge, onClose }: { edge: GraphEdge; onClose: () => void
     <>
       <PanelHead onClose={onClose}>
         <span className="chip chip--label" style={{ borderColor: "transparent" }}>
-          {sharedEntity ? "shared entity" : edge.type.replace(/_/g, " ")}
+          {partyRelation ? "party relationship" : sharedEntity ? "derived entity link" : edge.type.replace(/_/g, " ")}
         </span>
       </PanelHead>
 
       <h3 className="inspector__title">
-        {sharedEntity ? "Shared entity" : asserted ? "Matched relationship" : "Structural relationship"}
+        {partyRelation ? "Named party" : sharedEntity ? "Derived entity link" : asserted ? "Matched relationship" : "Structural relationship"}
       </h3>
 
       {asserted ? (
         <div className="inspector__section">
-          <div className="inspector__section-h">{sharedEntity ? "How these documents connect" : "Why these were linked"}</div>
+          <div className="inspector__section-h">{partyRelation || sharedEntity ? "How this relationship is supported" : "Why these were linked"}</div>
+          {partyRelation && (
+            <div className="inspector__muted">
+              This document names the connected party{readableRole(role) ? ` as ${readableRole(role)}` : ""}. The party node collects every document that names the same entity.
+            </div>
+          )}
           {sharedEntity && (
             <div className="inspector__muted">
-              This link groups the extracted facts that refer to the same entity.
+              This fallback link groups knowledge fields that refer to the same entity.
             </div>
           )}
-          {factCount !== undefined && (
+          {role !== undefined && (
             <div className="detail-row">
-              <div className="detail-row__key">facts</div>
-              <div className="detail-row__val">{fmt(factCount)}</div>
+              <div className="detail-row__key">role</div>
+              <div className="detail-row__val">{readableRole(role) || fmt(role)}</div>
             </div>
           )}
-          {names !== undefined && (
+          {current !== undefined && (
             <div className="detail-row">
-              <div className="detail-row__key">mentions</div>
-              <div className="detail-row__val">{fmt(names)}</div>
+              <div className="detail-row__key">family status</div>
+              <div className="detail-row__val">{current ? "current" : "historic"}</div>
+            </div>
+          )}
+          {mentionCount !== undefined && (
+            <div className="detail-row">
+              <div className="detail-row__key">knowledge fields</div>
+              <div className="detail-row__val">{fmt(mentionCount)}</div>
+            </div>
+          )}
+          {fields !== undefined && (
+            <div className="detail-row">
+              <div className="detail-row__key">source fields</div>
+              <div className="detail-row__val">{fmt(fields)}</div>
+            </div>
+          )}
+          {evidence !== undefined && (
+            <div className="detail-row">
+              <div className="detail-row__key">evidence-backed</div>
+              <div className="detail-row__val">{fmt(evidence)}</div>
             </div>
           )}
           {!sharedEntity && method !== undefined && (

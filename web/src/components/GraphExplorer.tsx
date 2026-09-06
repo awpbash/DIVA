@@ -217,9 +217,9 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
             aria-selected={viewMode === "lens"}
             className={`graph-mode__btn${viewMode === "lens" ? " graph-mode__btn--on" : ""}`}
             onClick={() => switchMode("lens")}
-            title="Show only the entities shared across documents and how they link them"
+            title="Show the parties named in documents and the roles that connect them"
           >
-            Cross-doc lens
+            Entity map
           </button>
         </div>
         <button
@@ -339,10 +339,11 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
 
             {viewMode === "lens" && (
               <div className="explorer__filter-group explorer__hint">
-                <h4>Cross-doc lens</h4>
+                <h4>Entity map</h4>
                 <p className="explorer__note">
-                  Shows the people, organisations, assets, and terms shared
-                  across documents. Detail inside each document is hidden.
+                  Shows the parties named in each document and the roles they
+                  play. Shared party nodes make cross-document connections
+                  visible without mixing in clause structure.
                 </p>
               </div>
             )}
@@ -352,16 +353,16 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
               <ul>
                 {viewMode === "full" ? (
                   <>
-                    <li>Click a document to reveal its sections.</li>
+                    <li>Click an agreement to reveal its sections.</li>
                     <li>Click a section to reveal its facts.</li>
                     <li>Click a node to inspect it and trace it to its source.</li>
                     <li>Click a dashed edge to see why the link was made.</li>
                   </>
                 ) : (
                   <>
-                    <li>Each line is one document → entity.</li>
-                    <li>Click a node to see where it came from.</li>
-                    <li>Click an edge to see the extracted facts behind the link.</li>
+                    <li>Each arrow is a document → party relationship.</li>
+                    <li>Click a party to spotlight every connected document.</li>
+                    <li>Click an arrow to see its role and supporting knowledge fields.</li>
                   </>
                 )}
                 <li>Scroll to zoom, drag to pan.</li>
@@ -377,6 +378,7 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
               mode={viewMode}
               hiddenGroups={hiddenGroups}
               selectedNodeId={selectedNode?.id ?? null}
+              selectedEdgeId={selectedEdge?.id ?? null}
               onSelectNode={n => { setSelectedNode(n); if (n) setSelectedEdge(null); }}
               onSelectEdge={e => { setSelectedEdge(e); if (e) setSelectedNode(null); }}
               search={searchQuery}
