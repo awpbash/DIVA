@@ -777,15 +777,23 @@ async def hubs(doc_id: str | None = Query(default=None),
     def _doc_params() -> list[dict]:
         return [] if doc_ids is None else [{"name": "@docs", "value": doc_ids}]
 
-    resolve_edges, doc_rows = await asyncio.gather(
+    resolve_edges, doc_rows, agreement_rows = await asyncio.gather(
         store.query(
             "SELECT c.pk, c.src, c.tgt FROM c WHERE c.kind = 'edge' AND "
             "c.rel = 'RESOLVES_TO'"
             + (" AND ARRAY_CONTAINS(@docs, c.pk)" if doc_ids is not None else ""),
             _doc_params()),
         store.query("SELECT * FROM c WHERE c.kind = 'document'"),
+        store.query(
+            "SELECT c.doc_id, c.title FROM c WHERE c.kind = 'agreement'"
+            + (" AND ARRAY_CONTAINS(@docs, c.doc_id)" if doc_ids is not None else ""),
+            _doc_params()),
     )
     doc_cache = {d["id"]: d for d in doc_rows}
+    agreement_titles = {
+        str(a["doc_id"]): str(a["title"])
+        for a in agreement_rows if a.get("title")
+    }
     hub_ids = sorted({e["tgt"] for e in resolve_edges})
     hubs_map, fact_cache = await asyncio.gather(
         store.fetch_many(hub_ids, pk="global"),
@@ -809,6 +817,10 @@ async def hubs(doc_id: str | None = Query(default=None),
         hub = _hub_to_payload(hubs_map.get(hid))
         if d is None or hub is None:
             continue
+        # A document's generic doctype is identical across a contract family,
+        # so it makes the cross-document lens unreadable. The corresponding
+        # Agreement carries the extracted, human-facing title.
+        d.title = agreement_titles.get(str(did), d.title)
         nodes[d.id] = d
         nodes.setdefault(hub.id, hub)
         add_edge(d.id, hub.id, "HAS_ENTITY", {

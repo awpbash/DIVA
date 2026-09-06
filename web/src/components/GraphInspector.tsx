@@ -228,11 +228,15 @@ function EdgeInspector({ edge, onClose }: { edge: GraphEdge; onClose: () => void
   const method = props["method"];
   const confidence = props["confidence"];
   const signals = props["signals"];
-  const asserted = edge.type === "RESOLVES_TO";
+  const sharedEntity = edge.type === "HAS_ENTITY";
+  const asserted = edge.type === "RESOLVES_TO" || sharedEntity;
+  const factCount = props["facts"];
+  const names = props["names"];
 
   const otherRows = Object.entries(props).filter(
     ([k, v]) =>
       k !== "method" && k !== "confidence" && k !== "signals" &&
+      k !== "facts" && k !== "names" &&
       v !== null && v !== undefined && v !== "",
   );
 
@@ -240,36 +244,53 @@ function EdgeInspector({ edge, onClose }: { edge: GraphEdge; onClose: () => void
     <>
       <PanelHead onClose={onClose}>
         <span className="chip chip--label" style={{ borderColor: "transparent" }}>
-          {edge.type.replace(/_/g, " ")}
+          {sharedEntity ? "shared entity" : edge.type.replace(/_/g, " ")}
         </span>
       </PanelHead>
 
       <h3 className="inspector__title">
-        {asserted ? "Matched relationship" : "Structural relationship"}
+        {sharedEntity ? "Shared entity" : asserted ? "Matched relationship" : "Structural relationship"}
       </h3>
 
       {asserted ? (
         <div className="inspector__section">
-          <div className="inspector__section-h">Why these were linked</div>
-          {method !== undefined && (
+          <div className="inspector__section-h">{sharedEntity ? "How these documents connect" : "Why these were linked"}</div>
+          {sharedEntity && (
+            <div className="inspector__muted">
+              This link groups the extracted facts that refer to the same entity.
+            </div>
+          )}
+          {factCount !== undefined && (
+            <div className="detail-row">
+              <div className="detail-row__key">facts</div>
+              <div className="detail-row__val">{fmt(factCount)}</div>
+            </div>
+          )}
+          {names !== undefined && (
+            <div className="detail-row">
+              <div className="detail-row__key">mentions</div>
+              <div className="detail-row__val">{fmt(names)}</div>
+            </div>
+          )}
+          {!sharedEntity && method !== undefined && (
             <div className="detail-row">
               <div className="detail-row__key">method</div>
               <div className="detail-row__val">{fmt(method)}</div>
             </div>
           )}
-          {confidence !== undefined && (
+          {!sharedEntity && confidence !== undefined && (
             <div className="detail-row">
               <div className="detail-row__key">confidence</div>
               <div className="detail-row__val">{fmt(confidence)}</div>
             </div>
           )}
-          {signals !== undefined && (
+          {!sharedEntity && signals !== undefined && (
             <div className="detail-row">
               <div className="detail-row__key">signals</div>
               <div className="detail-row__val">{fmt(signals)}</div>
             </div>
           )}
-          {method === undefined && confidence === undefined && signals === undefined && (
+          {!sharedEntity && method === undefined && confidence === undefined && signals === undefined && (
             <div className="inspector__muted">
               No explanation recorded for this link.
             </div>

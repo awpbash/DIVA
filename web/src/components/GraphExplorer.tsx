@@ -341,9 +341,8 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
               <div className="explorer__filter-group explorer__hint">
                 <h4>Cross-doc lens</h4>
                 <p className="explorer__note">
-                  Shows only the entities that link documents together, and how
-                  they match the external customer and block registers. Detail
-                  inside each document is hidden.
+                  Shows the people, organisations, assets, and terms shared
+                  across documents. Detail inside each document is hidden.
                 </p>
               </div>
             )}
@@ -362,7 +361,7 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
                   <>
                     <li>Each line is one document → entity.</li>
                     <li>Click a node to see where it came from.</li>
-                    <li>Click an edge to see the signals behind the match.</li>
+                    <li>Click an edge to see the extracted facts behind the link.</li>
                   </>
                 )}
                 <li>Scroll to zoom, drag to pan.</li>

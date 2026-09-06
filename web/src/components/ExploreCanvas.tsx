@@ -282,7 +282,7 @@ function GlyphNode({ data, selected }: NodeProps<ExploreNodeData>) {
       <span className="gnode__dot" style={{ background: groupColorVar(data.group) }} />
       <div className="gnode__body">
         <div className="gnode__label">
-          {data.label}
+          {displayNodeLabel(data.label, data.group)}
           {data.proposal && <span className="gnode__badge">unverified</span>}
         </div>
         <div className="gnode__title">{data.title}</div>
@@ -301,6 +301,19 @@ function GlyphNode({ data, selected }: NodeProps<ExploreNodeData>) {
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </div>
   );
+}
+
+function displayNodeLabel(label: string, group: string): string {
+  const words = label.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ");
+  if (group === "identity" && words.toLowerCase().startsWith("canonical ")) {
+    return `Shared ${words.slice("canonical ".length)}`;
+  }
+  return words;
+}
+
+function displayEdgeLabel(type: string): string {
+  if (type === "HAS_ENTITY") return "shares";
+  return type.replace(/_/g, " ").toLowerCase();
 }
 
 const NODE_TYPES = { glyph: GlyphNode };
@@ -478,7 +491,7 @@ function buildGraph(
       source: e.source,
       target: e.target,
       type: "smoothstep",
-      label: e.type.replace(/_/g, " ").toLowerCase(),
+      label: displayEdgeLabel(e.type),
       labelBgPadding: [4, 2],
       labelBgBorderRadius: 4,
       data: { raw: e },
