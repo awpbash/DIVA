@@ -9,8 +9,9 @@ import { JobTicker } from "./components/JobTicker";
 import { AdminJobsProvider } from "./hooks/useAdminJobs";
 import { FeedbackButton } from "./components/FeedbackButton";
 import { HelpButton } from "./components/HelpButton";
-import { IconDocument } from "./components/Icon";
+import { IconDocument, IconMenu } from "./components/Icon";
 import { LoginScreen } from "./components/LoginScreen";
+import { MobileNavigation } from "./components/MobileNavigation";
 import { SetupWizard } from "./components/SetupWizard";
 import { WarmupBanner } from "./components/WarmupBanner";
 import { useAuth } from "./auth";
@@ -226,6 +227,14 @@ function MainApp() {
 
   const recents: Thread[] = threads.list;
   const activeThread = threads.active;
+  const tabTitle: Record<Tab, string> = {
+    chat: "Ask DIVA",
+    explore: "Explore graph",
+    review: "Review",
+    knowledge: "Knowledge",
+    admin: "Workspace",
+    ontology: "Schema",
+  };
 
   return (
     <AdminJobsProvider admin={user?.role === "admin"}>
@@ -235,8 +244,11 @@ function MainApp() {
         onClick={() => setNavOpen(o => !o)}
         aria-label="Menu"
         aria-expanded={navOpen}
-      >☰</button>
-      <span>{appName}</span>
+      ><IconMenu size={19} /></button>
+      <span className="mobilebar__context">
+        <small>{appName}</small>
+        <strong>{tabTitle[tab]}</strong>
+      </span>
     </div>
     {navOpen && <div className="mobile-scrim" onClick={() => setNavOpen(false)} />}
     <div className={`app${navOpen ? " app--nav-open" : ""}`}>
@@ -357,6 +369,11 @@ function MainApp() {
         thread={activeThread}
         viewerDocId={viewerDocId}
         selectedDocIds={selectedDocIds}
+      />
+      <MobileNavigation
+        tab={tab}
+        tabs={tabs}
+        onTab={next => { setTab(next); setNavOpen(false); setFocusedEvidence(null); }}
       />
     </div>
     </AdminJobsProvider>

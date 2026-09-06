@@ -36,6 +36,7 @@ export function KnowledgeView() {
   // long field list down to the rows the reader is actually after.
   const [fieldQ, setFieldQ] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
 
   const doExport = async () => {
     if (exporting) return;
@@ -57,7 +58,7 @@ export function KnowledgeView() {
   useEffect(() => {
     if (!group) { setView(null); return; }
     saveUi("km.group", group);
-    setActiveKey(null); setAgg({}); setFieldQ("");
+    setActiveKey(null); setAgg({}); setFieldQ(""); setEvidenceOpen(false);
     getKmFamily(group).then(setView).catch(() => setErr("Couldn't load this family."));
   }, [group]);
 
@@ -113,6 +114,16 @@ export function KnowledgeView() {
             title="Download this family's aligned fields as an Excel workbook (current values, trust, sources, history)"
           >
             {exporting ? "Exporting…" : "⬇ Export Excel"}
+          </button>
+        )}
+        {view && (
+          <button
+            type="button"
+            className="kb__evidence-toggle"
+            onClick={() => setEvidenceOpen(true)}
+            disabled={!activeKey}
+          >
+            Evidence
           </button>
         )}
       </div>
@@ -200,7 +211,11 @@ export function KnowledgeView() {
                     <FieldCard
                       key={f.full_key} f={f} active={activeKey === f.full_key}
                       agg={agg[f.field_key]}
-                      onSelect={() => setActiveKey(k => (k === f.full_key ? null : f.full_key))}
+                      onSelect={() => {
+                        const next = activeKey === f.full_key ? null : f.full_key;
+                        setActiveKey(next);
+                        setEvidenceOpen(next !== null);
+                      }}
                       onAggregate={() => runAggregate(f)}
                     />
                   ))}
@@ -210,9 +225,24 @@ export function KnowledgeView() {
             </div>
 
             {/* Evidence — the Prime-Directive highlight for the selected field. */}
-            <div className="kb__evidence">
+            {evidenceOpen && (
+              <button
+                type="button"
+                className="kb__evidence-scrim"
+                onClick={() => setEvidenceOpen(false)}
+                aria-label="Close evidence"
+              />
+            )}
+            <aside className={`kb__evidence${evidenceOpen ? " kb__evidence--open" : ""}`}>
+              <div className="kb__evidence-mobile-head">
+                <div>
+                  <strong>Source evidence</strong>
+                  <span>Check the clause behind the selected field</span>
+                </div>
+                <button type="button" onClick={() => setEvidenceOpen(false)}>Close</button>
+              </div>
               <EvidencePane view={view} activeKey={activeKey} />
-            </div>
+            </aside>
           </div>
         </div>
       )}

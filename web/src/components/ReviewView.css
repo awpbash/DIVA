@@ -389,3 +389,70 @@
   border-radius: 4px;
 }
 .review__kbdhint b { color: var(--text-muted); font-weight: 600; }
+
+.review__mobile-pane { display: none; }
+
+@media (max-width: 760px) {
+  .review__bar {
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .review__modes { width: max-content; max-width: 100%; }
+  .review__modes button { min-height: 36px; padding: 6px 10px; }
+  .review__doc { order: 2; width: 100%; max-width: none; min-height: 42px; flex-basis: 100%; }
+  .review__addev, .review__queue-start { min-height: 38px; }
+  .review__counts {
+    order: 3;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .review__count, .review__progress { flex: 0 0 auto; }
+  .review__queue { order: 3; }
+  .review__queue-keys, .review__kbdhint { display: none; }
+  .review__mobile-pane {
+    order: 4;
+    display: inline-flex;
+    width: 100%;
+    padding: 3px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--bg-app);
+  }
+  .review__mobile-pane button {
+    min-height: 34px;
+    flex: 1 1 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .review__mobile-pane button.is-active { background: var(--primary-soft); color: var(--primary); }
+  .review__body { display: block; min-height: 0; }
+  .review__page, .review__fields { height: 100%; border: 0; }
+  .review__page { background: var(--bg-sidebar); }
+  .review__canvas { padding: 12px; }
+  .review__fields { padding: 8px 8px calc(20px + env(safe-area-inset-bottom)); }
+  .review--mobile-fields .review__page { display: none; }
+  .review--mobile-page .review__fields { display: none; }
+  .review__pager {
+    min-height: 48px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 7px 10px;
+  }
+  .review__pager > button { min-width: 42px; min-height: 34px; }
+  .review__search { width: 100%; margin: 0; order: 3; }
+  .review__search-input { width: 100%; min-height: 34px; }
+  .review__field { min-height: 62px; padding: 10px 12px; }
+  .review__actions { flex-wrap: wrap; }
+  .review__actions button { min-height: 36px; }
+  .review__ev { align-items: flex-start; min-height: 36px; padding: 7px 8px; }
+  .review__ev-snip { white-space: normal; line-height: 1.4; }
+  .review__attach-row > * { min-width: 100%; }
+  .review__attach-go { min-height: 40px; }
+}

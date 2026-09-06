@@ -209,3 +209,8 @@
 @media (max-width: 720px) {
   .helpm__nav { display: none; }
 }
+
+@media (max-width: 760px) {
+  .help { right: 12px; bottom: calc(120px + env(safe-area-inset-bottom)); }
+  .helpm__box { width: min(100% - 20px, 620px); max-height: 88dvh; }
+}

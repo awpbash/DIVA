@@ -555,10 +555,25 @@ export function ExploreCanvas(props: ExploreCanvasProps) {
   );
 }
 
+function useCompactViewport() {
+  const [compact, setCompact] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches,
+  );
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 760px)");
+    const update = () => setCompact(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return compact;
+}
+
 function Inner({
   payload, hiddenGroups, selectedNodeId, selectedEdgeId = null, onSelectNode, onSelectEdge,
   mode = "full", search = "",
 }: ExploreCanvasProps) {
+  const compact = useCompactViewport();
   // Agreements/sections the user has opened. Both start closed: the default
   // view is just the document spine, not a clause structure nobody asked to
   // see yet. Click an Agreement to reveal its Sections, a Section to reveal
@@ -768,7 +783,10 @@ function Inner({
       onEdgeClick={onEdgeClick}
       onPaneClick={() => { onSelectNode(null); onSelectEdge(null); }}
       proOptions={{ hideAttribution: true }}
-      panOnScroll
+      panOnScroll={!compact}
+      panOnDrag
+      zoomOnPinch
+      zoomOnDoubleClick={!compact}
       zoomOnScroll
       minZoom={0.2}
       maxZoom={2.2}
@@ -777,15 +795,17 @@ function Inner({
       nodesConnectable={false}
     >
         <Background gap={26} color="rgba(255,255,255,0.045)" />
-        <Controls showInteractive={false} position="bottom-left" />
-        <MiniMap
-          pannable
-          zoomable
-          className="rfgraph__minimap"
-          nodeColor={(n) =>
-            groupColorVarRaw((n.data as ExploreNodeData)?.group || "other")
-          }
-        />
+        <Controls showInteractive={false} position={compact ? "bottom-right" : "bottom-left"} />
+        {!compact && (
+          <MiniMap
+            pannable
+            zoomable
+            className="rfgraph__minimap"
+            nodeColor={(n) =>
+              groupColorVarRaw((n.data as ExploreNodeData)?.group || "other")
+            }
+          />
+        )}
       </ReactFlow>
 
       <div className="explore-canvas__guide">
@@ -799,7 +819,9 @@ function Inner({
             ? "Selection focus keeps only the connected path prominent. Click the canvas or clear focus to restore the whole graph."
             : mode === "full"
             ? "Open cards with a chevron to reveal their next level of detail."
-            : "Each arrow names a party relationship. Select a party to trace every connected document."}
+            : compact
+              ? "Drag to pan and pinch to zoom. Tap a party or arrow to follow a relationship."
+              : "Each arrow names a party relationship. Select a party to trace every connected document."}
         </p>
       </div>
 

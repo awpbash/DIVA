@@ -22,7 +22,7 @@ import { GraphInspector } from "./GraphInspector";
 import {
   groupColorVar, groupForLabel, labelsInGroup, nodeSearchText, useGraphLegend,
 } from "./graphTheme";
-import { IconClose, IconPanelRight } from "./Icon";
+import { IconClose, IconLayers, IconPanelRight } from "./Icon";
 
 
 // The fact labels the extractor emits, for the category filter chips. Comes
@@ -68,6 +68,7 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
   const [loading, setLoading] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   // "full" = the whole graph (expand-on-click); "lens" = the cross-doc
   // identity story only.
   const [viewMode, setViewMode] = useState<ViewMode>("full");
@@ -193,7 +194,7 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
     });
 
   return (
-    <div className="pane" style={{ minHeight: 0 }}>
+    <div className="pane pane--graph" style={{ minHeight: 0 }}>
       <div className="pane__header">
         <div className="pane__title">Knowledge graph</div>
         <div className="pane__subtitle">
@@ -232,16 +233,45 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
           {focusMode ? <IconClose size={14} /> : <IconPanelRight size={14} />}
           <span>{focusMode ? "Show panels" : "Focus canvas"}</span>
         </button>
+        {!focusMode && (
+          <button
+            type="button"
+            className="graph-header-action graph-header-action--filters"
+            onClick={() => setMobileFiltersOpen(open => !open)}
+            aria-expanded={mobileFiltersOpen}
+            aria-label={mobileFiltersOpen ? "Close graph controls" : "Open graph controls"}
+          >
+            {mobileFiltersOpen ? <IconClose size={14} /> : <IconLayers size={14} />}
+            <span>{mobileFiltersOpen ? "Close" : "Filters"}</span>
+          </button>
+        )}
       </div>
 
       <div
-        className="explorer"
+        className={`explorer${mobileFiltersOpen ? " explorer--mobile-controls-open" : ""}`}
         style={{
           gridTemplateColumns: `${showSidebar ? "240px " : ""}1fr`,
         }}
       >
+        {mobileFiltersOpen && (
+          <button
+            type="button"
+            className="explorer__mobile-scrim"
+            onClick={() => setMobileFiltersOpen(false)}
+            aria-label="Close graph controls"
+          />
+        )}
         {showSidebar && (
           <aside className="explorer__sidebar">
+            <div className="explorer__mobile-filter-head">
+              <div>
+                <strong>Explore controls</strong>
+                <span>Change what is shown on the map</span>
+              </div>
+              <button type="button" onClick={() => setMobileFiltersOpen(false)} aria-label="Close graph controls">
+                <IconClose size={16} />
+              </button>
+            </div>
             <div className="explorer__filter-group">
               <h4>Search</h4>
               <input
@@ -387,15 +417,23 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
         </main>
 
         {showDetail && (
-          <aside className="explorer__detail">
-            <GraphInspector
-              node={selectedNode}
-              edge={selectedEdge}
-              fallbackDocId={docId}
-              onViewEvidence={onViewEvidence}
-              onClose={() => { setSelectedNode(null); setSelectedEdge(null); }}
+          <>
+            <button
+              type="button"
+              className="explorer__detail-scrim"
+              onClick={() => { setSelectedNode(null); setSelectedEdge(null); }}
+              aria-label="Close graph details"
             />
-          </aside>
+            <aside className="explorer__detail">
+              <GraphInspector
+                node={selectedNode}
+                edge={selectedEdge}
+                fallbackDocId={docId}
+                onViewEvidence={onViewEvidence}
+                onClose={() => { setSelectedNode(null); setSelectedEdge(null); }}
+              />
+            </aside>
+          </>
         )}
       </div>
     </div>

@@ -354,3 +354,57 @@
   background: transparent; border: 1px solid var(--border); color: var(--text-muted);
   border-radius: 7px; padding: 8px 14px; font-size: 12.5px; cursor: pointer;
 }
+
+@media (max-width: 760px) {
+  .adm { padding: 12px 10px calc(14px + env(safe-area-inset-bottom)); }
+  .adm__head { align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+  .adm__head h2 { font-size: 16px; }
+  .adm__actions { flex-wrap: wrap; justify-content: flex-end; }
+  .adm__actions button { min-height: 38px; padding: 6px 10px; }
+  .adm__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+  .adm__stat { min-height: 92px; padding: 11px 12px; }
+  .adm__stat:last-child { grid-column: span 2; min-height: 70px; }
+  .adm__stat-v { font-size: 22px; }
+  .adm__tabs {
+    gap: 4px;
+    margin: 0 -2px 10px;
+    overflow-x: auto;
+    border-bottom: 0;
+    padding: 2px 2px 4px;
+  }
+  .adm__tabs button {
+    min-height: 38px;
+    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 11px;
+    background: var(--bg-card);
+  }
+  .adm__tabs button.is-active { border-color: var(--accent); background: var(--accent-soft); }
+  .adm__panel { padding: 10px; border-radius: 10px; }
+  .adm__panel-h { align-items: flex-start; gap: 8px; }
+  .adm__panel-act { flex-wrap: wrap; gap: 8px; }
+  .adm__scroll { overflow: auto; border-radius: 7px; }
+  .adm__table { min-width: 620px; font-size: 12px; }
+  .adm__table th, .adm__table td { padding: 8px; }
+  .adm__table th:first-child, .adm__table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--bg-card);
+    box-shadow: 8px 0 12px -12px rgba(0, 0, 0, 0.9);
+  }
+  .adm__table th:first-child { z-index: 3; }
+  .adm__doc { max-width: 190px; }
+  .adm__search { min-height: 40px; }
+  .adm__pager { padding-right: 0; flex-wrap: wrap; gap: 8px; }
+  .adm__pager button { min-height: 34px; }
+  .adm__addform input, .adm__addform select, .adm__addform button { min-height: 38px; }
+  .adm__fb-chips { overflow-x: auto; padding-bottom: 2px; }
+  .adm__fb-chip { flex: 0 0 auto; min-height: 36px; }
+  .adm__fb-lightbox { padding: 16px; }
+  .adm__fb-lightbox img { max-width: 100%; max-height: 82dvh; }
+  .modal__grid2 { grid-template-columns: 1fr; }
+  .updrop { padding: 20px 12px; }
+  .toast { right: 10px; bottom: calc(74px + env(safe-area-inset-bottom)); left: 10px; max-width: none; }
+}
