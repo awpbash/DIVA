@@ -4,6 +4,7 @@
   grid-template-rows: auto 1fr;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   background: var(--bg-app);
   color: var(--text);
 }

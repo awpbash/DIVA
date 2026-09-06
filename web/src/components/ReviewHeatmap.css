@@ -1,5 +1,5 @@
 /* Review coverage heatmap — documents × categories. */
-.hm { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.hm { display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden; }
 .hm__empty { padding: 48px; text-align: center; color: var(--text-subtle); }
 .hm__empty code { background: var(--bg-card); padding: 2px 6px; border-radius: 5px; font-size: 12px; }
 
