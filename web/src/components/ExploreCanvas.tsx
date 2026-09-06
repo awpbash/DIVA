@@ -511,7 +511,12 @@ const STYLESHEET: any[] = [
       "border-width": 2,
       "border-color": (ele: NodeSingular) => GROUP_HEX[ele.data("group") as string] || GROUP_HEX.other,
       "border-style": (ele: NodeSingular) => (ele.data("proposal") ? "dashed" : "solid"),
-      label: (ele: NodeSingular) => `${ele.data("kicker")}\n${ele.data("title")}`,
+      // A precomputed field read through the same plain data() mapper edge
+      // labels already use, not a style function returning a template
+      // string — the function form was observed, production build only, to
+      // leave every node unlabelled while shapes and edge labels (which use
+      // data()) drew fine. Same information, the mapper form is proven.
+      label: "data(displayLabel)",
       "text-wrap": "wrap",
       "text-max-width": NODE_W - 24,
       "text-valign": "center",
@@ -696,13 +701,15 @@ export function ExploreCanvas({
         n.highlight === false && "cynode--dim",
       ].filter(Boolean).join(" ");
       const p = positions.get(n.id) ?? { x: 0, y: 0 };
+      const title = n.isFamily ? `${n.title} (${n.count})` : n.title;
       return {
         data: {
           id: n.id,
           group: n.group,
           proposal: n.proposal,
-          kicker: n.isFamily ? n.kicker : n.kicker,
-          title: n.isFamily ? `${n.title} (${n.count})` : n.title,
+          kicker: n.kicker,
+          title,
+          displayLabel: `${n.kicker}\n${title}`,
           isFamily: n.isFamily,
           familyKey: n.familyKey,
           rawLabel: n.rawLabel,
@@ -777,7 +784,7 @@ export function ExploreCanvas({
     cy.on("mouseout", "node", evt => evt.target.removeClass("cynode--hover"));
     cy.on("zoom", () => {
       const zoomedOut = cy.zoom() < LABEL_ZOOM_THRESHOLD;
-      cy.batch(() => cy.nodes().not(".cynode--family").toggleClass("cynode--zoomed-out", zoomedOut));
+      cy.nodes().not(".cynode--family").toggleClass("cynode--zoomed-out", zoomedOut);
     });
 
     const ro = new ResizeObserver(() => cy.resize());
@@ -814,24 +821,27 @@ export function ExploreCanvas({
     const doFit = () => { cy.resize(); cy.fit(undefined, 48); };
 
     if (idsChanged) {
-      cy.batch(() => {
-        cy.elements().remove();
-        cy.add(elements);
-      });
+      // Not wrapped in cy.batch(): a remove-then-add of the same ids inside
+      // one batch has been observed, only in a production (minified) build,
+      // to leave the readded elements in the model (data/style/position all
+      // compute correctly) but never registered with the renderer, so they
+      // silently never draw — no error, nothing to catch, just a permanently
+      // blank canvas. Unbatched add/remove is a hair slower with no visible
+      // cost at this graph's size, and it always renders.
+      cy.elements().remove();
+      cy.add(elements);
       cy.layout({ name: "preset", fit: false } as cytoscape.LayoutOptions).run();
       lastIdsRef.current = ids;
       requestAnimationFrame(doFit);
       return;
     }
-    cy.batch(() => {
-      for (const el of elements) {
-        const ele = cy.getElementById(el.data.id as string);
-        if (ele.empty()) continue;
-        ele.data(el.data);
-        ele.classes(el.classes ?? "");
-        if (layoutJustResolved && el.position) ele.position(el.position as cytoscape.Position);
-      }
-    });
+    for (const el of elements) {
+      const ele = cy.getElementById(el.data.id as string);
+      if (ele.empty()) continue;
+      ele.data(el.data);
+      ele.classes(el.classes ?? "");
+      if (layoutJustResolved && el.position) ele.position(el.position as cytoscape.Position);
+    }
     if (layoutJustResolved) requestAnimationFrame(doFit);
   }, [elements, laid.sig, sig]);
 
