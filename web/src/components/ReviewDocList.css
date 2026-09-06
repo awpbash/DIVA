@@ -1,5 +1,12 @@
 /* Review overview — document list (SharePoint-library style). */
-.rdl { display: flex; flex-direction: column; min-height: 0; height: 100%; padding: var(--s-4) var(--s-6); }
+/* min-width: 0 matters at every level of this chain, not just the scroll
+   box at the bottom of it: .rdl itself is a grid item of .review, and a
+   flex/grid item defaults to never shrinking below its content's natural
+   width UNLESS its own overflow is something other than visible. Nothing
+   here had overflow set, so the deepest fix (on .rdl__scroll alone) still
+   left the outer box — and everything sharing its grid row — stretched to
+   fit the table's full width. */
+.rdl { display: flex; flex-direction: column; min-height: 0; min-width: 0; height: 100%; padding: var(--s-4) var(--s-6); }
 .rdl__empty { color: var(--text-subtle); padding: var(--s-10); text-align: center; font-size: 13px; }
 
 .rdl__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-4); flex-wrap: wrap; }
