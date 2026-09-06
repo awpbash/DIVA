@@ -41,6 +41,7 @@ import {
   labelsInGroup,
   nodeSearchText,
 } from "./graphTheme";
+import { IconChevron, IconCompass, IconLayers } from "./Icon";
 
 
 // ---------------------------------------------------------------------------
@@ -89,8 +90,8 @@ const ROW_H = 78;
 const elk = new ELK();
 
 // Approximate rendered pill size; ELK only needs these to reserve space.
-const NODE_W = 224;
-const NODE_H = 58;
+const NODE_W = 248;
+const NODE_H = 80;
 
 const ELK_OPTIONS: Record<string, string> = {
   "elk.algorithm": "layered",
@@ -249,6 +250,9 @@ interface ExploreNodeData {
   label: string;
   title: string;
   subtitle?: string;
+  childCount: number;
+  childKind?: "sections" | "facts";
+  expanded?: boolean;
   group: string;
   proposal: boolean;
   selected?: boolean;
@@ -268,6 +272,7 @@ function GlyphNode({ data, selected }: NodeProps<ExploreNodeData>) {
     `gnode--g-${data.group}`,
     data.proposal && "gnode--proposal",
     selected && "gnode--selected",
+    data.expanded && "gnode--expanded",
     data.highlight === true && "gnode--match",
     data.highlight === false && "gnode--dim",
   ].filter(Boolean).join(" ");
@@ -281,6 +286,17 @@ function GlyphNode({ data, selected }: NodeProps<ExploreNodeData>) {
           {data.proposal && <span className="gnode__badge">unverified</span>}
         </div>
         <div className="gnode__title">{data.title}</div>
+        {(data.subtitle || data.childCount > 0) && (
+          <div className="gnode__meta">
+            {data.subtitle && <span>{data.subtitle}</span>}
+            {data.childCount > 0 && data.childKind && (
+              <span className="gnode__expand" title={`Click to ${data.expanded ? "hide" : "show"} ${data.childKind}`}>
+                {data.childCount} {data.childKind}
+                <span className="gnode__chevron"><IconChevron size={12} /></span>
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </div>
@@ -328,6 +344,25 @@ function parentMap(payload: GraphPayload, edgeType: string, parentLabel: string)
   return m;
 }
 
+/** Directly expandable children for the two progressive-detail node kinds.
+ * These counts make the cards themselves explain what a click will reveal. */
+function childInfo(payload: GraphPayload): Map<string, { count: number; kind: "sections" | "facts" }> {
+  const byId = new Map(payload.nodes.map(n => [n.id, n]));
+  const info = new Map<string, { count: number; kind: "sections" | "facts" }>();
+  for (const e of payload.edges) {
+    const source = byId.get(e.source);
+    const isSection = e.type === "HAS_SECTION" && source?.label === "Agreement";
+    const isFact = e.type === "IN_SECTION" && source?.label === "Section";
+    if (!isSection && !isFact) continue;
+    const prior = info.get(e.source);
+    info.set(e.source, {
+      count: (prior?.count ?? 0) + 1,
+      kind: isSection ? "sections" : "facts",
+    });
+  }
+  return info;
+}
+
 /**
  * Visibility model: only the Document/Agreement spine + identity hubs show by
  * default — a document family is a wall of clause structure otherwise, before
@@ -350,6 +385,7 @@ function buildGraph(
 
   const agreementOfSection = parentMap(payload, "HAS_SECTION", "Agreement");
   const sectionOfFact = parentMap(payload, "IN_SECTION", "Section");
+  const children = childInfo(payload);
   const anyAgreementLink = agreementOfSection.size > 0;
   const anySectionLink = sectionOfFact.size > 0;
 
@@ -404,6 +440,7 @@ function buildGraph(
     const col = columnFor(n.label, mode);
     const row = colCursor[col] = (colCursor[col] ?? 0) + 1;
     const group = groupForLabel(n.label);
+    const child = children.get(n.id);
     nodes.push({
       id: n.id,
       type: "glyph",
@@ -413,6 +450,11 @@ function buildGraph(
         label: n.label,
         title: shortTitle(n),
         subtitle: subtitleFor(n),
+        childCount: child?.count ?? 0,
+        childKind: child?.kind,
+        expanded: child?.kind === "sections"
+          ? openAgreements.has(n.id)
+          : child?.kind === "facts" ? openSections.has(n.id) : false,
         group,
         proposal: isProposalNode(n),
         selected: false,   // applied as an overlay in <Inner>, post-layout
@@ -602,7 +644,7 @@ function Inner({
   const { fitView } = useReactFlow();
   useEffect(() => {
     if (positioned.length === 0) return;
-    const t = window.setTimeout(() => fitView({ padding: 0.18, duration: 240 }), 0);
+    const t = window.setTimeout(() => fitView({ padding: 0.12, duration: 240 }), 0);
     return () => window.clearTimeout(t);
   }, [laid.sig, positioned.length, fitView]);
 
@@ -612,6 +654,20 @@ function Inner({
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+
+  const agreementsWithSections = useMemo(
+    () => new Set(parentMap(payload, "HAS_SECTION", "Agreement").values()),
+    [payload],
+  );
+  const hasExpandedDetail = openAgreements.size > 0 || openSections.size > 0;
+  const toggleStructure = () => {
+    if (hasExpandedDetail) {
+      setOpenAgreements(new Set());
+      setOpenSections(new Set());
+    } else {
+      setOpenAgreements(agreementsWithSections);
+    }
+  };
 
   const onNodeClick = (_: unknown, node: Node<ExploreNodeData>) => {
     onSelectEdge(null);
@@ -635,7 +691,8 @@ function Inner({
   }
 
   return (
-    <ReactFlow
+    <div className="explore-canvas">
+      <ReactFlow
       nodes={nodes}
       edges={edges}
       nodeTypes={NODE_TYPES}
@@ -645,23 +702,50 @@ function Inner({
       proOptions={{ hideAttribution: true }}
       panOnScroll
       zoomOnScroll
-      minZoom={0.1}
-      maxZoom={1.8}
+      minZoom={0.2}
+      maxZoom={2.2}
       fitView
-      fitViewOptions={{ padding: 0.18, duration: 240 }}
+      fitViewOptions={{ padding: 0.12, duration: 240 }}
       nodesConnectable={false}
     >
-      <Background gap={22} color="rgba(255,255,255,0.04)" />
-      <Controls showInteractive={false} position="bottom-left" />
-      <MiniMap
-        pannable
-        zoomable
-        className="rfgraph__minimap"
-        nodeColor={(n) =>
-          groupColorVarRaw((n.data as ExploreNodeData)?.group || "other")
-        }
-      />
-    </ReactFlow>
+        <Background gap={26} color="rgba(255,255,255,0.045)" />
+        <Controls showInteractive={false} position="bottom-left" />
+        <MiniMap
+          pannable
+          zoomable
+          className="rfgraph__minimap"
+          nodeColor={(n) =>
+            groupColorVarRaw((n.data as ExploreNodeData)?.group || "other")
+          }
+        />
+      </ReactFlow>
+
+      <div className="explore-canvas__guide">
+        <div className="explore-canvas__guide-count">
+          <IconLayers size={14} />
+          <strong>{base.nodes.length} in view</strong>
+          {base.nodes.length < payload.nodes.length && <span>of {payload.nodes.length} loaded</span>}
+        </div>
+        <p>
+          {mode === "full"
+            ? "Open cards with a chevron to reveal their next level of detail."
+            : "Follow the coloured links to see what connects documents."}
+        </p>
+      </div>
+
+      <div className="explore-canvas__actions">
+        <button type="button" onClick={() => fitView({ padding: 0.12, duration: 260 })}>
+          <IconCompass size={14} />
+          Center graph
+        </button>
+        {mode === "full" && agreementsWithSections.size > 0 && (
+          <button type="button" onClick={toggleStructure}>
+            <IconLayers size={14} />
+            {hasExpandedDetail ? "Collapse detail" : "Show sections"}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

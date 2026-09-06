@@ -224,19 +224,20 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
         </div>
         <button
           type="button"
-          className="pane__icon-btn"
+          className="graph-header-action"
           onClick={() => setFocusMode(f => !f)}
           title={focusMode ? "Show panels (Esc)" : "Maximise canvas"}
           aria-label={focusMode ? "Show panels" : "Maximise canvas"}
         >
           {focusMode ? <IconClose size={14} /> : <IconPanelRight size={14} />}
+          <span>{focusMode ? "Show panels" : "Focus canvas"}</span>
         </button>
       </div>
 
       <div
         className="explorer"
         style={{
-          gridTemplateColumns: `${showSidebar ? "260px " : ""}1fr${showDetail ? " 340px" : ""}`,
+          gridTemplateColumns: `${showSidebar ? "240px " : ""}1fr`,
         }}
       >
         {showSidebar && (
@@ -302,7 +303,7 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
             {viewMode === "full" && (
               <>
                 <div className="explorer__filter-group">
-                  <h4>Fact categories</h4>
+                  <h4>Facts to include</h4>
                   <div className="explorer__chips">
                     {factLabels.map(lbl => {
                       const on = labels.has(lbl);
@@ -321,7 +322,7 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
                 </div>
 
                 <div className="explorer__filter-group">
-                  <h4>Facts shown</h4>
+                  <h4>Fact limit</h4>
                   <input
                     type="range"
                     min={40}
@@ -331,7 +332,7 @@ export function GraphExplorer({ doc, docs, onViewEvidence }: Props) {
                     onChange={e => setLimit(Number(e.target.value))}
                     className="explorer__range"
                   />
-                  <div className="explorer__range-readout">{limit} facts</div>
+                  <div className="explorer__range-readout">Load up to {limit} facts</div>
                 </div>
               </>
             )}

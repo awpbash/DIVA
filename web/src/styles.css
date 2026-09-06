@@ -1331,10 +1331,11 @@ button:focus-visible {
 
 .explorer {
   display: grid;
-  grid-template-columns: 260px 1fr 320px;
+  grid-template-columns: 240px 1fr;
   min-height: 0;
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 .explorer__sidebar {
   background: var(--bg-sidebar-2);
@@ -1352,8 +1353,16 @@ button:focus-visible {
   flex-direction: column;
 }
 .explorer__detail {
+  position: absolute;
+  z-index: 4;
+  top: var(--s-3);
+  right: var(--s-3);
+  bottom: var(--s-3);
+  width: min(360px, calc(100% - 272px));
   background: var(--bg-sidebar-2);
-  border-left: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   padding: var(--s-4);
   overflow-y: auto;
 }
@@ -1502,8 +1511,9 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 188px;
-  padding: 7px 11px;
+  width: 248px;
+  min-height: 80px;
+  padding: 10px 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -1554,6 +1564,28 @@ button:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.gnode__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--text-subtle);
+}
+.gnode__expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--primary);
+  font-weight: 650;
+}
+.gnode__chevron {
+  display: inline-flex;
+  transform: rotate(-90deg);
+  transition: transform var(--t-snap) var(--ease-spring);
+}
+.gnode--expanded .gnode__chevron { transform: rotate(0deg); }
 .gnode__badge {
   font-size: 8px;
   font-weight: 700;
@@ -1590,6 +1622,58 @@ button:focus-visible {
   letter-spacing: 0.02em;
 }
 .react-flow__edge-textbg { fill: var(--bg-app); fill-opacity: 0.85; }
+
+/* Orientation controls stay over the canvas rather than taking another
+   column away from the graph itself. */
+.explore-canvas { position: relative; width: 100%; height: 100%; }
+.explore-canvas__guide,
+.explore-canvas__actions {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  background: color-mix(in srgb, var(--bg-sidebar-2) 92%, transparent);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+}
+.explore-canvas__guide {
+  top: var(--s-3);
+  left: var(--s-3);
+  max-width: min(410px, calc(100% - 32px));
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+}
+.explore-canvas__guide-count { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-muted); }
+.explore-canvas__guide-count strong { color: var(--text); font-weight: 650; }
+.explore-canvas__guide-count span { color: var(--text-subtle); }
+.explore-canvas__guide p { margin: 0; font-size: 11.5px; line-height: 1.45; color: var(--text-muted); }
+.explore-canvas__actions {
+  top: var(--s-3);
+  right: var(--s-3);
+  padding: 3px;
+  border-radius: var(--radius);
+}
+.explore-canvas__actions button,
+.graph-header-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.explore-canvas__actions button { padding: 6px 8px; border-radius: var(--radius-sm); }
+.explore-canvas__actions button:hover,
+.graph-header-action:hover { background: var(--bg-card-hover); color: var(--text); }
 
 /* legend — also acts as a group show/hide filter */
 .legend {
@@ -2168,6 +2252,19 @@ button:focus-visible {
 .graph-mode__btn:hover { color: var(--text); }
 .graph-mode__btn--on { background: var(--primary-soft); color: var(--primary); }
 
+.graph-header-action {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 900px) {
+  .explorer__detail { width: min(360px, calc(100% - 24px)); }
+  .explore-canvas__guide { max-width: 260px; }
+  .explore-canvas__actions { top: auto; bottom: var(--s-3); right: 108px; }
+  .graph-header-action span { display: none; }
+}
+
 .explorer__note { font-size: 11.5px; line-height: 1.5; color: var(--text-muted); margin: 0; }
 
 /* ── Lazy-view fallback (code-split chunks arriving) ─────────────── */
@@ -2283,4 +2380,3 @@ button:focus-visible {
   .pane__header { padding: 10px 14px; }
   .helpm__nav { display: none; }
 }
-
